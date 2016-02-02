@@ -3,12 +3,12 @@ package black.alias.pixelpie.graphics;
 import black.alias.pixelpie.PixelPie;
 import processing.core.PGraphics;
 
-public class graphics {
+public class Graphics {
 	public int x, y, depth, index;
 	public PGraphics graphic;
 	final PixelPie pie;
 
-	public graphics(int PosX, int PosY, int objWidth, int objHeight, int Depth, PixelPie pie) {
+	public Graphics(int PosX, int PosY, int objWidth, int objHeight, int Depth, PixelPie pie) {
 		this.pie = pie;
 		x = PosX;
 		y = PosY;

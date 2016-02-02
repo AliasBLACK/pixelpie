@@ -7,7 +7,7 @@ import black.alias.pixelpie.*;
  * @author Xuanming
  *
  */
-public class decal {
+public class Decal {
 	int x, y, origin, xOffset, yOffset, depth, gid, objWidth, objHeight;
 	int objFrames, waitFrames, currentFrame, currentWait; // Animation
 	final PixelPie pie;
@@ -23,7 +23,7 @@ public class decal {
 	 * @param Depth
 	 * @param GID
 	 */
-	public decal(int PosX, int PosY, int Depth, int GID, PixelPie pie) {
+	public Decal(int PosX, int PosY, int Depth, int GID, PixelPie pie) {
 		this(PosX, PosY, Depth, GID, 0, true, null, pie);
 	}
 
@@ -35,11 +35,11 @@ public class decal {
 	 * @param Origin
 	 * @param Sprite
 	 */
-	public decal(int PosX, int PosY, int Depth, int Origin, String Sprite, PixelPie pie) {
+	public Decal(int PosX, int PosY, int Depth, int Origin, String Sprite, PixelPie pie) {
 		this(PosX, PosY, Depth, 0, Origin, false, Sprite, pie);
 	}
 
-	public decal(int PosX, int PosY, int Depth, int GID, int Origin, boolean IsTile, String Sprite, PixelPie pie) {
+	public Decal(int PosX, int PosY, int Depth, int GID, int Origin, boolean IsTile, String Sprite, PixelPie pie) {
 
 		// Set parameters.
 		x = PosX;
@@ -53,7 +53,7 @@ public class decal {
 
 		// If it's a sprite...
 		if (!isTile) {
-			sprite pix = pie.spr.get(sprite);
+			Sprite pix = pie.spr.get(sprite);
 			objWidth = pix.pixWidth;
 			objHeight = pix.sprite.height;
 			objFrames = pix.pixFrames;

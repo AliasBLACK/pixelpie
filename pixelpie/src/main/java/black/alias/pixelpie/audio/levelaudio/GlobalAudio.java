@@ -1,15 +1,15 @@
-package black.alias.pixelpie.sound.levelSound;
+package black.alias.pixelpie.audio.levelaudio;
 
 import black.alias.pixelpie.PixelPie;
-import black.alias.pixelpie.sound.soundFile;
+import black.alias.pixelpie.audio.AudioFile;
 
 /**
  * Global/ambient sound.
  * @author Xuanming
  *
  */
-public class globalSound implements levelSound {
-	public soundFile player;
+public class GlobalAudio implements LevelAudio {
+	public AudioFile player;
 	boolean loop;
 	int frames;
 	float step;
@@ -20,7 +20,7 @@ public class globalSound implements levelSound {
 	 * @param Loop
 	 * @param pie
 	 */
-	public globalSound(String filename, boolean Loop, PixelPie pie) {
+	public GlobalAudio(String filename, boolean Loop, PixelPie pie) {
 		player = pie.SoundDevice.createSound(filename);
 		this.loop = Loop;
 	}

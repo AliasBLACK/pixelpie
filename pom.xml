@@ -8,5 +8,7 @@
 	<description>2D Pixel Art Game Framework for Processing 3</description>
 	<modules>
 		<module>pixelpie</module>
+		<module>pixeloven-android</module>
+		<module>pixeloven-java</module>
 	</modules>
 </project>

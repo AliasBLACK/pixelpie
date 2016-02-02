@@ -7,19 +7,19 @@ import black.alias.pixelpie.PixelPie;
 import processing.core.PApplet;
 import processing.data.IntDict;
 
-public class script {
+public class Script {
 	boolean loopFrame;
 	int currentFrame, endFrame, currentAction;
 	IntDict scriptCoords;
-	ArrayList<scriptAction> runningChildren;
-	HashMap<String, scriptAction[]> children;
+	ArrayList<ScriptAction> runningChildren;
+	HashMap<String, ScriptAction[]> children;
 	final PixelPie pie;
 
-	public script(int EndFrame, IntDict ScriptCoords, HashMap<String, scriptAction[]> Children, PixelPie pie) {
+	public Script(int EndFrame, IntDict ScriptCoords, HashMap<String, ScriptAction[]> Children, PixelPie pie) {
 		endFrame = EndFrame;
 		scriptCoords = ScriptCoords;
 		children = Children;
-		runningChildren = new ArrayList<scriptAction>();
+		runningChildren = new ArrayList<ScriptAction>();
 		this.pie = pie;
 	}
 
@@ -32,9 +32,9 @@ public class script {
 			// If frame is not set to loop, add new scriptActions to
 			// runningChildren.
 			if (!loopFrame) {
-				scriptAction[] newActions = children.get(PApplet.str(currentFrame));
+				ScriptAction[] newActions = children.get(PApplet.str(currentFrame));
 				if (newActions != null) {
-					for (scriptAction action : newActions) {
+					for (ScriptAction action : newActions) {
 						if (action != null) {
 							runningChildren.add(action);
 						}
@@ -46,7 +46,7 @@ public class script {
 			for (int i = 0; i < runningChildren.size(); i++) {
 
 				// Get action.
-				scriptAction action = runningChildren.get(i);
+				ScriptAction action = runningChildren.get(i);
 
 				// Check if action is done.
 				if (action.destroyed) {

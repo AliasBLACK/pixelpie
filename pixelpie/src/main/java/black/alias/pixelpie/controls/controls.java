@@ -3,16 +3,16 @@ package black.alias.pixelpie.controls;
 import processing.event.KeyEvent;
 import processing.event.MouseEvent;
 import black.alias.pixelpie.PixelPie;
-import black.alias.pixelpie.gameObject;
+import black.alias.pixelpie.GameObject;
 
-public class controls {
+public class Controls {
 	final PixelPie pie;
 
 	/**
 	 * Initiate controls.
 	 * @param pie
 	 */
-	public controls (PixelPie pie) {
+	public Controls (PixelPie pie) {
 		this.pie = pie;
 		
 		// Register methods.
@@ -28,7 +28,7 @@ public class controls {
 		switch (event.getAction()){
 		case MouseEvent.PRESS:
 			if (!pie.scriptRunning()) {
-				for (gameObject obj : pie.objects) {
+				for (GameObject obj : pie.objects) {
 					obj.mousePressed();
 				}
 			}
@@ -36,7 +36,7 @@ public class controls {
 
 		case MouseEvent.RELEASE:
 			if (!pie.scriptRunning()) {
-				for (gameObject obj : pie.objects) {
+				for (GameObject obj : pie.objects) {
 					obj.mouseReleased();
 				}
 			}
@@ -44,7 +44,7 @@ public class controls {
 
 		case MouseEvent.WHEEL:
 			if (!pie.scriptRunning()) {
-				for (gameObject obj : pie.objects) {
+				for (GameObject obj : pie.objects) {
 					obj.mouseWheel(event);
 				}
 			}
@@ -60,7 +60,7 @@ public class controls {
 		switch(event.getAction()){
 		case KeyEvent.PRESS:
 			if (!pie.scriptRunning()) {
-				for (gameObject obj : pie.objects) {
+				for (GameObject obj : pie.objects) {
 					obj.keyPressed();
 				}
 			}
@@ -68,7 +68,7 @@ public class controls {
 
 		case KeyEvent.RELEASE:
 			if (!pie.scriptRunning()) {
-				for (gameObject obj : pie.objects) {
+				for (GameObject obj : pie.objects) {
 					obj.keyReleased();
 				}
 			}

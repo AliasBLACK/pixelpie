@@ -1,16 +1,16 @@
-package black.alias.pixelpie.sound.levelSound;
+package black.alias.pixelpie.audio.levelaudio;
 
 import processing.core.PApplet;
 import black.alias.pixelpie.PixelPie;
-import black.alias.pixelpie.sound.soundFile;
+import black.alias.pixelpie.audio.AudioFile;
 
 /**
  * Environmental sound that gets louder as it nears the center of the camera.
  * @author Xuanming
  *
  */
-public class envSound implements levelSound{
-	public soundFile player;
+public class EnvAudio implements LevelAudio{
+	public AudioFile player;
 	int x, y, range;
 	boolean loop;
 	final PixelPie pie;
@@ -24,7 +24,7 @@ public class envSound implements levelSound{
 	 * @param Loop
 	 * @param pie
 	 */
-	public envSound(int X, int Y, String filename, int Range, boolean Loop, PixelPie pie) {		
+	public EnvAudio(int X, int Y, String filename, int Range, boolean Loop, PixelPie pie) {		
 		this.pie = pie;		
 		player = pie.SoundDevice.createSound(filename);
 		x = X;
@@ -72,8 +72,11 @@ public class envSound implements levelSound{
 		// start playing.
 		} else if (loop) {
 			if (distanceFromCamera() <= range) {
-				player.setLoop(true);
-				adjustPlayer();
+				if (!player.isPlaying()) {
+					player.setLoop(true);
+					player.play();
+					adjustPlayer();
+				}
 			}
 		}
 	}
@@ -83,11 +86,11 @@ public class envSound implements levelSound{
 	 */
 	public void adjustPlayer() {
 		
-		// Sound's position from left of screen.
-		player.setPan(-1 + (float)(((x - pie.displayX) / (pie.app.width / pie.pixelSize)) * 2));
+		// Sound's position from left of screen.	
+		player.setPan(-1 + (((float)(x - pie.displayX) / (pie.app.width / pie.pixelSize)) * 2));
 
 		// Adjust volume depending on distance from center of screen.
-		player.setVolume(distanceFromCamera()/range);
+		player.setVolume(1 - distanceFromCamera()/range);
 	}
 	
 	/**

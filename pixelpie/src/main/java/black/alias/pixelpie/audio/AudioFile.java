@@ -1,6 +1,6 @@
-package black.alias.pixelpie.sound;
+package black.alias.pixelpie.audio;
 
-public interface soundFile {
+public interface AudioFile {
 	public void play();
 	public void pause();
 	public void rewind();	

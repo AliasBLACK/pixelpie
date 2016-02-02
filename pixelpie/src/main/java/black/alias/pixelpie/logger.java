@@ -8,14 +8,14 @@ import processing.core.*;
  * @author Xuanming
  *
  */
-public class logger {
+public class Logger {
 	final PrintWriter log;
 	final PApplet app;
 	
 	// Initialize log file.
-	public logger(PApplet app) {
+	public Logger(PApplet app, PixelPie pie) {
 		this.app = app;
-		this.log = app.createWriter(System.getProperty("user.home") + "/PixelPie/log.txt");
+		this.log = app.createWriter(pie.FileSystem.getDirectory() + "log.txt");		
 		prepareExitHandler();
 	}
 	

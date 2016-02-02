@@ -6,11 +6,6 @@
   <description>A pixelart game framework for Processing 3</description>
   <dependencies>
   	<dependency>
-  		<groupId>org.processing</groupId>
-  		<artifactId>core</artifactId>
-  		<version>3.0.1</version>
-  	</dependency>
-  	<dependency>
   		<groupId>org.softmed.jops</groupId>
   		<artifactId>jops</artifactId>
   		<version>0.5.1</version>

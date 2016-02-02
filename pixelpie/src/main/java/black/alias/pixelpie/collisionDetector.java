@@ -7,11 +7,11 @@ import java.util.ArrayList;
  * @author Xuanming
  *
  */
-public class collisionDetector extends Thread{
-	public ArrayList<gameObject> objectArray = new ArrayList<gameObject>();
+public class CollisionDetector extends Thread{
+	public ArrayList<GameObject> objectArray = new ArrayList<GameObject>();
 	final PixelPie pie;
 
-	public collisionDetector(PixelPie pie) {
+	public CollisionDetector(PixelPie pie) {
 		this.pie = pie;
 	}
 
@@ -25,7 +25,7 @@ public class collisionDetector extends Thread{
 			for (int i = 0; i < objectArray.size(); i++) {
 
 				// Select object 1.
-				gameObject obj1 = objectArray.get(i);
+				GameObject obj1 = objectArray.get(i);
 
 				// Test if object 1 is flagged as destroyed. Remove it from
 				// list.
@@ -39,7 +39,7 @@ public class collisionDetector extends Thread{
 					for (int k = i + 1; k < objectArray.size(); k++) {
 
 						// Get object 2.
-						gameObject obj2 = objectArray.get(k);
+						GameObject obj2 = objectArray.get(k);
 
 						// If object 2's noCollide is also false...
 						if (!obj2.noCollide) {

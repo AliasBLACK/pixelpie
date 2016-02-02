@@ -9,12 +9,13 @@ import processing.data.StringList;
 import processing.opengl.PGraphicsOpenGL;
 import black.alias.pixelpie.level.*;
 import black.alias.pixelpie.loader.*;
-import black.alias.pixelpie.sound.*;
-import black.alias.pixelpie.sound.levelSound.envSound;
-import black.alias.pixelpie.sound.levelSound.globalSound;
-import black.alias.pixelpie.sound.levelSound.levelSound;
 import black.alias.pixelpie.sprite.*;
-import black.alias.pixelpie.controls.controls;
+import black.alias.pixelpie.audio.*;
+import black.alias.pixelpie.audio.levelaudio.EnvAudio;
+import black.alias.pixelpie.audio.levelaudio.GlobalAudio;
+import black.alias.pixelpie.audio.levelaudio.LevelAudio;
+import black.alias.pixelpie.controls.Controls;
+import black.alias.pixelpie.file.FileManager;
 import black.alias.pixelpie.graphics.*;
 
 /**
@@ -24,8 +25,9 @@ import black.alias.pixelpie.graphics.*;
  */
 public class PixelPie {
 	public final PApplet app;
-	public final soundDevice SoundDevice;
-	public final logger log;
+	public final AudioDevice SoundDevice;
+	public final Logger log;
+	public final FileManager FileSystem;
 	public int displayX, displayY, roomWidth, roomHeight, matrixWidth, matrixHeight,
 		pixelSize, minScale, maxScale, index;
 	public final PImage canvas;
@@ -34,29 +36,31 @@ public class PixelPie {
 	public int background, black, white;
 	public int[] pixelMatrix;
 	public StringList depthBuffer;
-	public collisionDetector collider;
-	public script currentScript;
+	public CollisionDetector collider;
+	public Script currentScript;
+	
+	private int renderTileStartX, renderTileStartY, renderTileEndX, renderTileEndY;
 	
 	// Threaded loaders.
 	public levelLoader lvlLoader;
 	public dataLoader datLoader;
 	
 	// Containers for object instances.
-	public final ArrayList<gameObject> objects;
-	public final ArrayList<decal> decals;
-	public final ArrayList<graphics> graphics;
-	public final ArrayList<levelSound> sounds;
+	public final ArrayList<GameObject> objects;
+	public final ArrayList<Decal> decals;
+	public final ArrayList<Graphics> graphics;
+	public final ArrayList<LevelAudio> sounds;
 	
 	// Containers for permanent assets.
-	public final HashMap<String, sprite> spr;
-	public final HashMap<String, level> lvl;
+	public final HashMap<String, Sprite> spr;
+	public final HashMap<String, Level> lvl;
 
 	// Stuff for level.
 	public String currentLevelName, loadingText, tileSetRef;
 	public String loadLevelTarget = "";
 	public int levelZoom, levelBrightness;
-	public level currentLevel;
-	public tileSet[] tileSetList;
+	public Level currentLevel;
+	public TileSet[] tileSetList;
 
 	// Stuff needed to make lighting work.
 	public float gamma;
@@ -69,8 +73,8 @@ public class PixelPie {
 	 * @param app
 	 * @param minim
 	 */
-	public PixelPie(PApplet app, soundDevice device) {
-		this(app, device, 2, 30.0f);
+	public PixelPie(PApplet app, PixelOven oven) {
+		this(app, oven, 2, 30.0f);
 	}
 	
 	/**
@@ -79,8 +83,8 @@ public class PixelPie {
 	 * @param device
 	 * @param fps
 	 */
-	public PixelPie(PApplet app, soundDevice device, float fps) {
-		this(app, device, 2, fps);
+	public PixelPie(PApplet app, PixelOven oven, float fps) {
+		this(app, oven, 2, fps);
 	}
 	
 	/**
@@ -89,8 +93,8 @@ public class PixelPie {
 	 * @param minim
 	 * @param PixelSize
 	 */
-	public PixelPie(PApplet app, soundDevice device, int PixelSize) {
-		this(app, device, PixelSize, 30.0f);
+	public PixelPie(PApplet app, PixelOven oven, int PixelSize) {
+		this(app, oven, PixelSize, 30.0f);
 	}
 	
 	/**
@@ -100,7 +104,7 @@ public class PixelPie {
 	 * @param PixelSize
 	 * @param fps
 	 */
-	public PixelPie(PApplet app, soundDevice device, int PixelSize, float fps) {
+	public PixelPie(PApplet app, PixelOven oven, int PixelSize, float fps) {
 		
 		// Keep reference to PApplet.
 		this.app = app;
@@ -128,7 +132,7 @@ public class PixelPie {
 		minScale = pixelSize;
 		
 		// Initiate controls.
-		new controls(this);
+		new Controls(this);
 
 		// Initiate pixelMatrix.
 		matrixWidth = Math.round(app.width / pixelSize);
@@ -140,17 +144,20 @@ public class PixelPie {
 		levelBuffer = app.createImage(1, 1, PConstants.ARGB);
 
 		// Initiate collision detector.
-		collider = new collisionDetector(this);
+		collider = new CollisionDetector(this);
 		collider.start();
 
 		// Initiate depthBuffers.
 		depthBuffer = new StringList();
 
-		// Grab reference to soundDevice.
-		this.SoundDevice = device;
+		// Grab reference to AudioDevice.
+		this.SoundDevice = oven.getAudio();
+		
+		// Grab reference to FileManager.
+		this.FileSystem = oven.getManager();
 		
 		// Initiate logger.
-		this.log = new logger(app);
+		this.log = new Logger(app, this);
 		
 		// Initiate dataLoader.
 		datLoader = new dataLoader(this);
@@ -163,10 +170,10 @@ public class PixelPie {
 		lvlLoader.start();
 		
 		// Initiate containers.
-		objects = new ArrayList<gameObject>();
-		decals = new ArrayList<decal>();
-		graphics = new ArrayList<graphics>();
-		sounds = new ArrayList<levelSound>();
+		objects = new ArrayList<GameObject>();
+		decals = new ArrayList<Decal>();
+		graphics = new ArrayList<Graphics>();
+		sounds = new ArrayList<LevelAudio>();
 		
 		// Register methods with Processing.
 		app.registerMethod("draw", this);
@@ -366,7 +373,7 @@ public class PixelPie {
 	public void drawSpriteToMatrix (int x, int y, int frame, int alpha, int testResult, int lighted, String spriteName) {
 
 		// Get sprite.
-		sprite sprite = spr.get(spriteName);
+		Sprite sprite = spr.get(spriteName);
 
 		// Fail safe in case sprite is missing.
 		if (sprite == null) {testResult = 0;}
@@ -493,7 +500,7 @@ public class PixelPie {
 	public void drawSprite(int x, int y, int depth, int frame, int alpha, int lighted, String spriteName) {
 
 		// Get sprite.
-		sprite sprite = spr.get(spriteName);
+		Sprite sprite = spr.get(spriteName);
 
 		// Test if all edges are on screen.
 		int testResult = toInt(testOnScreen(x, y))
@@ -778,7 +785,7 @@ public class PixelPie {
 	 * @param y
 	 * @return
 	 */
-	public gameObject ptCollision(int x, int y) {
+	public GameObject ptCollision(int x, int y) {
 		String[] noStrings = {};
 		return ptCollision(x, y, noStrings);
 	}
@@ -790,8 +797,8 @@ public class PixelPie {
 	 * @param ignore
 	 * @return
 	 */
-	public gameObject ptCollision(int x, int y, String[] ignore) {
-		for (gameObject obj : objects) {
+	public GameObject ptCollision(int x, int y, String[] ignore) {
+		for (GameObject obj : objects) {
 			if (strMatch(obj.type, ignore)) {
 				continue;
 			} else if (left(obj) >= x) {
@@ -839,7 +846,7 @@ public class PixelPie {
 	 * @param obj2
 	 * @return
 	 */
-	public static boolean objHorzCollision(gameObject obj1, gameObject obj2) {
+	public static boolean objHorzCollision(GameObject obj1, GameObject obj2) {
 		return horzCollision(obj1.x - obj1.bBoxXOffset, obj1.x + obj1.bBoxWidth - obj1.bBoxXOffset,
 				obj2.x - obj2.bBoxXOffset, obj2.x + obj2.bBoxWidth - obj2.bBoxXOffset);
 	}
@@ -850,7 +857,7 @@ public class PixelPie {
 	 * @param obj2
 	 * @return
 	 */
-	public static boolean objVertCollision(gameObject obj1, gameObject obj2) {
+	public static boolean objVertCollision(GameObject obj1, GameObject obj2) {
 		return vertCollision(obj1.y - obj1.bBoxYOffset, obj1.y + obj1.bBoxHeight - obj1.bBoxYOffset,
 				obj2.y - obj2.bBoxYOffset, obj2.y + obj2.bBoxHeight - obj2.bBoxYOffset);
 	}
@@ -861,7 +868,7 @@ public class PixelPie {
 	 * @param obj2
 	 * @return
 	 */
-	public static boolean objCollision(gameObject obj1, gameObject obj2) {
+	public static boolean objCollision(GameObject obj1, GameObject obj2) {
 		return (toInt(objHorzCollision(obj1, obj2)) + toInt(objVertCollision(obj1, obj2)) == 2) ? true
 				: false;
 	}
@@ -872,7 +879,7 @@ public class PixelPie {
 	 * @param obj2
 	 * @return
 	 */
-	public static boolean objColPredictive (gameObject obj1, gameObject obj2) {
+	public static boolean objColPredictive (GameObject obj1, GameObject obj2) {
 		if (
 				toInt(horzCollision (
 						obj1.x - obj1.bBoxXOffset + Math.round(obj1.xSpeed),
@@ -909,7 +916,7 @@ public class PixelPie {
 	 * @param obj
 	 * @return
 	 */
-	public static int btm(gameObject obj) {
+	public static int btm(GameObject obj) {
 		return obj.y - obj.bBoxYOffset + obj.bBoxHeight;
 	}
 	
@@ -918,7 +925,7 @@ public class PixelPie {
 	 * @param obj
 	 * @return
 	 */
-	public static int top(gameObject obj) {
+	public static int top(GameObject obj) {
 		return obj.y - obj.bBoxYOffset;
 	}
 
@@ -927,7 +934,7 @@ public class PixelPie {
 	 * @param obj
 	 * @return
 	 */
-	public static int left(gameObject obj) {
+	public static int left(GameObject obj) {
 		return obj.x - obj.bBoxXOffset;
 	}
 
@@ -936,7 +943,7 @@ public class PixelPie {
 	 * @param obj
 	 * @return
 	 */
-	public static int right(gameObject obj) {
+	public static int right(GameObject obj) {
 		return obj.x - obj.bBoxXOffset + obj.bBoxWidth;
 	}
 	
@@ -963,7 +970,7 @@ public class PixelPie {
 	 * @param obj
 	 * @return
 	 */
-	public static String getParam(String str, gameObject obj) {
+	public static String getParam(String str, GameObject obj) {
 		if (obj.parameters == null) {
 			return "";
 		} else {
@@ -989,7 +996,7 @@ public class PixelPie {
 	 * @param obj2
 	 * @return
 	 */
-	public static int vertDist(gameObject obj1, gameObject obj2) {
+	public static int vertDist(GameObject obj1, GameObject obj2) {
 		int result1 = (obj2.y - obj2.bBoxYOffset) - (obj1.y - obj1.bBoxYOffset + obj1.bBoxHeight);
 		int result2 = (obj2.y - obj2.bBoxYOffset + obj2.bBoxHeight) - (obj1.y - obj1.bBoxYOffset);
 		return (PApplet.min(PApplet.abs(result1), PApplet.abs(result2)) == PApplet.abs(result1)) ? result1 : result2;
@@ -1001,7 +1008,7 @@ public class PixelPie {
 	 * @param obj2
 	 * @return
 	 */
-	public static int horzDist(gameObject obj1, gameObject obj2) {
+	public static int horzDist(GameObject obj1, GameObject obj2) {
 		int result1 = (obj2.x - obj2.bBoxXOffset) - (obj1.x - obj1.bBoxXOffset + obj1.bBoxWidth);
 		int result2 = (obj2.x - obj2.bBoxXOffset + obj2.bBoxWidth) - (obj1.x - obj1.bBoxXOffset);
 		return (PApplet.min(PApplet.abs(result1), PApplet.abs(result2)) == PApplet.abs(result1)) ? result1 : result2;
@@ -1013,7 +1020,7 @@ public class PixelPie {
 	 * @param obj2
 	 * @return
 	 */
-	public static float dist(gameObject obj1, gameObject obj2) {
+	public static float dist(GameObject obj1, GameObject obj2) {
 		float result = 0;
 		switch (toInt(objHorzCollision(obj1, obj2)) + (2 * toInt(objVertCollision(obj1, obj2)))) {
 
@@ -1069,7 +1076,7 @@ public class PixelPie {
 	 * @param level
 	 * @return
 	 */
-	public static int coordToArray(int x, int y, level level) {
+	public static int coordToArray(int x, int y, Level level) {
 		return x + y * level.levelWidth;
 	}
 
@@ -1079,7 +1086,7 @@ public class PixelPie {
 	 * @param level
 	 * @return
 	 */
-	public static int getCoordX(int value, level level) {
+	public static int getCoordX(int value, Level level) {
 		return value % level.levelWidth;
 	}
 
@@ -1089,7 +1096,7 @@ public class PixelPie {
 	 * @param level
 	 * @return
 	 */
-	public static int getCoordY(int value, level level) {
+	public static int getCoordY(int value, Level level) {
 		return Math.round(value / level.levelWidth);
 	}
 	
@@ -1132,7 +1139,7 @@ public class PixelPie {
 	 * Update all decals.
 	 */
 	public void updateDecals() {
-		for (decal decal : decals) {
+		for (Decal decal : decals) {
 			if (!isPaused) {
 				decal.animate();
 			}
@@ -1257,7 +1264,7 @@ public class PixelPie {
 		collider.objectArray.clear();
 		decals.clear();
 		graphics.clear();
-		for (levelSound sound : sounds){
+		for (LevelAudio sound : sounds){
 			sound.release();
 		}
 		sounds.clear();
@@ -1268,9 +1275,9 @@ public class PixelPie {
 	 * @param name
 	 * @return
 	 */
-	public gameObject getObject(String name) {
-		gameObject obj = null;
-		for (gameObject object : objects) {
+	public GameObject getObject(String name) {
+		GameObject obj = null;
+		for (GameObject object : objects) {
 			if (object.type.equals(name)) {
 				obj = object;
 				break;
@@ -1288,8 +1295,8 @@ public class PixelPie {
 	 * @param Depth
 	 * @return
 	 */
-	public graphics createGraphics(int PosX, int PosY, int objWidth, int objHeight, int Depth) {
-		graphics.add(new graphics(PosX, PosY, objWidth, objHeight, Depth, this));
+	public Graphics createGraphics(int PosX, int PosY, int objWidth, int objHeight, int Depth) {
+		graphics.add(new Graphics(PosX, PosY, objWidth, objHeight, Depth, this));
 		graphics.get(graphics.size() - 1).index = graphics.size() - 1;
 		return graphics.get(graphics.size() - 1);
 	}
@@ -1298,7 +1305,7 @@ public class PixelPie {
 	 * Update all the graphics objects.
 	 */
 	public void updateGraphics() {
-		for (graphics graphic : graphics) {
+		for (Graphics graphic : graphics) {
 			graphic.draw();
 		}
 	}
@@ -1380,10 +1387,11 @@ public class PixelPie {
 	 */
 	public void updateLevel() {
 		if (currentLevel != null) {
-			int renderTileStartX, renderTileStartY, renderTileEndX, renderTileEndY;
+			//int renderTileStartX, renderTileStartY, renderTileEndX, renderTileEndY;
 
 			// Process each background layer.
 			for (int h = 0; h < currentLevel.backgroundLayers; h++) {
+				
 				// Get scroll rate for this layer.
 				float bgScrollRate = currentLevel.bgScroll[h];
 
@@ -1427,14 +1435,14 @@ public class PixelPie {
 					}
 				}
 
-				// Else, draw normally from tiles.
+			// Else, draw normally from tiles.
 			} else {
 
 				// Determine how much of the level is seen.
-				renderTileStartX = PApplet.max(0, Math.round(displayX / currentLevel.tileWidth));
-				renderTileStartY = PApplet.max(0, Math.round(displayY / currentLevel.tileHeight));
-				renderTileEndX = PApplet.min(currentLevel.levelColumns, PApplet.ceil((displayX + (app.width/pixelSize)) / currentLevel.tileWidth));
-				renderTileEndY = PApplet.min(currentLevel.levelRows, PApplet.ceil((displayY + (app.height/pixelSize)) / currentLevel.tileHeight));
+				renderTileStartX = PApplet.max(0, displayX / currentLevel.tileWidth);
+				renderTileStartY = PApplet.max(0, displayY / currentLevel.tileHeight);
+				renderTileEndX = PApplet.min(currentLevel.levelColumns, (displayX + (app.width/pixelSize) / currentLevel.tileWidth));
+				renderTileEndY = PApplet.min(currentLevel.levelRows, (displayY + (app.height/pixelSize) / currentLevel.tileHeight));
 
 				// Render visible tiles.
 				// Process each layer.
@@ -1500,7 +1508,7 @@ public class PixelPie {
 	 * @param gid
 	 * @param tileSet
 	 */
-	public void drawTileLevelBuffer (int x, int y, int gid, tileSet tileSet) {
+	public void drawTileLevelBuffer (int x, int y, int gid, TileSet tileSet) {
 
 		// Get tile coordinate on tileSet image.
 		gid -= tileSet.firstGID;
@@ -1509,6 +1517,7 @@ public class PixelPie {
 
 		for (int i = 0; i < tileSet.tileWidth; i++) {
 			for (int k = 0; k < tileSet.tileHeight; k++) {
+				tileSet.tileSet.loadPixels();
 				drawPixelLevelBuffer(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
 			}
 		}
@@ -1557,7 +1566,7 @@ public class PixelPie {
 	 * @param gid
 	 * @param tileSet
 	 */
-	void drawTile(int x, int y, int gid, tileSet tileSet) {
+	void drawTile(int x, int y, int gid, TileSet tileSet) {
 		drawTile(x, y, gid, 0, tileSet);
 	}
 
@@ -1569,7 +1578,7 @@ public class PixelPie {
 	 * @param lighted
 	 * @param tileSet
 	 */
-	void drawTile (int x, int y, int gid, int lighted, tileSet tileSet) {
+	void drawTile (int x, int y, int gid, int lighted, TileSet tileSet) {
 
 		// Get tile coordinate on tileSet image.
 		gid -= tileSet.firstGID;
@@ -1597,17 +1606,27 @@ public class PixelPie {
 			// Render partially to screen.
 			for (int i = startX; i < endX; i++) {
 				for (int k = startY; k < endY; k++) {
-					if (lighted == 1) { drawPixel(i + x, k + y, true, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]); }
-					else { drawPixel(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]); }
+					if (lighted == 1) {
+						tileSet.tileSet.loadPixels();
+						drawPixel(i + x, k + y, true, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
+					} else {
+						tileSet.tileSet.loadPixels();
+						drawPixel(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
+					}
 				}
 			}
 
-			// Else, render all.
+		// Else, render all.
 		} else {
 			for (int i = 0; i < tileSet.tileWidth; i++) {
 				for (int k = 0; k < tileSet.tileHeight; k++) {
-					if (lighted == 1) { drawPixel(i + x, k + y, true, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]); }
-					else { drawPixel(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]); }
+					if (lighted == 1) { 
+						tileSet.tileSet.loadPixels();
+						drawPixel(i + x, k + y, true, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]); 
+					} else {
+						tileSet.tileSet.loadPixels();
+						drawPixel(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
+					}
 				}
 			}
 		}
@@ -1620,7 +1639,7 @@ public class PixelPie {
 		for (int i = 0; i < objects.size(); i++) {
 
 			// Get object.
-			gameObject obj = objects.get(i);
+			GameObject obj = objects.get(i);
 
 			// If destroyed, remove from list.
 			if (obj.destroyed) {
@@ -1672,7 +1691,7 @@ public class PixelPie {
 	 * Update all sounds.
 	 */
 	public void updateSounds() {
-		for (levelSound sound : sounds) {
+		for (LevelAudio sound : sounds) {
 			sound.update();
 		}
 	}
@@ -1682,12 +1701,12 @@ public class PixelPie {
 	 * @param filename
 	 * @return
 	 */
-	public levelSound createGlobalSound(String filename) {
+	public LevelAudio createGlobalSound(String filename) {
 		return createGlobalSound(filename, false);
 	}
 
-	public levelSound createGlobalSound(String filename, boolean loop) {
-		sounds.add(new globalSound(filename, loop, this));
+	public LevelAudio createGlobalSound(String filename, boolean loop) {
+		sounds.add(new GlobalAudio(filename, loop, this));
 		return sounds.get(sounds.size() - 1);
 	}
 
@@ -1698,7 +1717,7 @@ public class PixelPie {
 	 * @param filename
 	 * @return
 	 */
-	public levelSound createEnvSound(int X, int Y, String filename) {
+	public LevelAudio createEnvSound(int X, int Y, String filename) {
 		return createEnvSound(X, Y, filename, (app.width / pixelSize) / 2, false);
 	}
 
@@ -1710,7 +1729,7 @@ public class PixelPie {
 	 * @param Loop
 	 * @return
 	 */
-	public levelSound createEnvSound(int X, int Y, String filename, boolean Loop) {
+	public LevelAudio createEnvSound(int X, int Y, String filename, boolean Loop) {
 		return createEnvSound(X, Y, filename, (app.width / pixelSize) / 2, Loop);
 	}
 
@@ -1722,7 +1741,7 @@ public class PixelPie {
 	 * @param Range
 	 * @return
 	 */
-	public levelSound createEnvSound(int X, int Y, String filename, int Range) {
+	public LevelAudio createEnvSound(int X, int Y, String filename, int Range) {
 		return createEnvSound(X, Y, filename, Range, false);
 	}
 
@@ -1735,8 +1754,8 @@ public class PixelPie {
 	 * @param Loop
 	 * @return
 	 */
-	public levelSound createEnvSound(int X, int Y, String filename, int Range, boolean Loop) {
-		sounds.add(new envSound(X, Y, filename, Range, Loop, this));
+	public LevelAudio createEnvSound(int X, int Y, String filename, int Range, boolean Loop) {
+		sounds.add(new EnvAudio(X, Y, filename, Range, Loop, this));
 		return sounds.get(sounds.size() - 1);
 	}
 }

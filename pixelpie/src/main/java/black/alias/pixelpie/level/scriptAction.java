@@ -2,18 +2,18 @@ package black.alias.pixelpie.level;
 
 import processing.core.*;
 
-public class scriptAction {
-	script parent;
+public class ScriptAction {
+	Script parent;
 	boolean destroyed, pause;
 	int currentFrame, endFrame;
 	String[] arguments;
 
 	// Construct.
-	scriptAction() {
+	ScriptAction() {
 	}
 
 	// Setup.
-	void setup(String Arguments, script Parent) {
+	void setup(String Arguments, Script Parent) {
 		arguments = PApplet.split(Arguments, ",");
 		for (int i = 0; i < arguments.length; i++) {
 			arguments[i] = PApplet.trim(arguments[i]);

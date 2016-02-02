@@ -2,9 +2,9 @@ package black.alias.pixelpie;
 
 import processing.data.StringDict;
 import processing.event.MouseEvent;
-import black.alias.pixelpie.sprite.sprite;
+import black.alias.pixelpie.sprite.Sprite;
 
-public class gameObject {
+public class GameObject {
 	public int x, y, xOffset, yOffset, origin, depth, objWidth, objHeight, alpha, index;
 	public int bBoxWidth, bBoxHeight, bBoxXOffset, bBoxYOffset;
 	public int objFrames, waitFrames, currentFrame, currentWait; // Animation
@@ -14,13 +14,13 @@ public class gameObject {
 	public boolean destroyed, visible, lockBBox, lighted, noLoop, preserveFrame, noCollide, noAnimate, reverseAnim;
 	public String sprite, type;
 	public StringDict parameters;
-	public gameObject other, otherPredict;
+	public GameObject other, otherPredict;
 	
 	// Reference to PixelPie.
 	final PixelPie pie;
 
 	// Constructor.
-	public gameObject(PixelPie pie) {
+	public GameObject(PixelPie pie) {
 		visible = true;
 		lockBBox = false;
 		type = "Object";
@@ -102,7 +102,7 @@ public class gameObject {
 	public void setSprite(String SpriteFile) {
 		if (pie.spr.get(SpriteFile) != null) {
 			sprite = SpriteFile;
-			sprite pix = pie.spr.get(sprite);
+			Sprite pix = pie.spr.get(sprite);
 			objWidth = pix.pixWidth;
 			objHeight = pix.sprite.height;
 			objFrames = pix.pixFrames;

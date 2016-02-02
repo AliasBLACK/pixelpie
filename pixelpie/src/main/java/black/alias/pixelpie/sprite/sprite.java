@@ -5,7 +5,7 @@ import processing.core.PConstants;
 import processing.core.PImage;
 import black.alias.pixelpie.*;
 
-public class sprite {
+public class Sprite {
 
 	public int pixFrames, pixWidth, waitFrames, currentFrame, currentWait;
 	public boolean hasIlum;
@@ -13,16 +13,17 @@ public class sprite {
 	public float[] IlumMap;
 	final PixelPie pie;
 
-	public sprite(int frames, int fps, boolean flipX, boolean flipY, String colormap, String ilummap, PixelPie pie) {
+	public Sprite(int frames, int fps, boolean flipX, boolean flipY, String colormap, String ilummap, PixelPie pie) {
 		
 		// Keep reference to PixelPie.
 		this.pie = pie;
 
 		// Test if file exists.
-		if (pie.fileExists(pie.app.dataPath(colormap))) {
+		//if (pie.fileExists(pie.app.dataPath(colormap))) {
 
 			// Load the sprite.
-			sprite = pie.app.loadImage(pie.app.dataPath(colormap));
+			//sprite = pie.app.loadImage(pie.app.dataPath(colormap));
+			sprite = pie.app.loadImage(colormap);
 			pixFrames = PApplet.constrain(frames, 1, 999) - 1;
 
 			// Flip the sprite if required.
@@ -80,9 +81,9 @@ public class sprite {
 			}
 
 			// ...Else, report the file not found.
-		} else {
-			pie.log.printlg("Image " + pie.app.dataPath(colormap) + " not found.");
-		}
+		//} else {
+		//	pie.log.printlg("Image " + pie.app.dataPath(colormap) + " not found.");
+		//}
 	}
 	
 	/**

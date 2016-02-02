@@ -10,22 +10,23 @@ import processing.data.IntDict;
 import processing.data.StringDict;
 import processing.data.XML;
 
-public class level {
+public class Level {
 	public String levelName;
-	public HashMap<String, script> scripts;
+	public HashMap<String, Script> scripts;
 	public StringDict properties;
 	public int levelWidth, levelHeight, levelColumns, levelRows, levelLayers, backgroundLayers, tileWidth, tileHeight;
 	public int[][] levelMap, background;
 	public float[] bgScroll;
 	public XML[] objects, tileSets;
 
-	public level(String filename, PixelPie pie) {
+	public Level(String filename, PixelPie pie) {
 
 		// Test if file exists.
-		if (pie.fileExists(pie.app.dataPath(filename))) {
+		//if (pie.fileExists(pie.app.dataPath(filename))) {
 
 			// Load file as XML.
-			XML file = pie.app.loadXML(pie.app.dataPath(filename));
+			//XML file = pie.app.loadXML(pie.app.dataPath(filename));
+			XML file = pie.app.loadXML(filename);
 
 			// Get level properties, if any.
 			if (file.getChild("properties") != null) {
@@ -54,7 +55,7 @@ public class level {
 			objects = file.getChildren("objectgroup");
 
 			// Get scripts.
-			scripts = new HashMap<String, script>();
+			scripts = new HashMap<String, Script>();
 			for (XML objectType : objects) {
 				String objectName = objectType.getString("name");
 
@@ -139,14 +140,14 @@ public class level {
 						}
 
 						// Create the scriptAction container "children".
-						HashMap<String, scriptAction[]> children = new HashMap<String, scriptAction[]> ();
+						HashMap<String, ScriptAction[]> children = new HashMap<String, ScriptAction[]> ();
 
 						// Create the script object.
-						script Script = new script(endFrame, scriptCoords, children, pie);
+						Script Script = new Script(endFrame, scriptCoords, children, pie);
 						scripts.put(name, Script);
 
 						// Create scriptAction temporary container. This one uses a HashMap so we can dynamically add scriptActions to it.
-						HashMap<String, ArrayList<scriptAction>> scriptTemp = new HashMap<String, ArrayList<scriptAction>>();
+						HashMap<String, ArrayList<ScriptAction>> scriptTemp = new HashMap<String, ArrayList<ScriptAction>>();
 
 						// Add scriptActions to the temporary container.
 						for (XML obj : objectType.getChild("properties").getChildren("property")) {
@@ -155,10 +156,10 @@ public class level {
 							// Create scriptAction object from parameters.
 							String[] actionArray = PApplet.split(obj.getString("value"), "(");
 							String params = actionArray[1].substring(0, actionArray[1].length() - 1);
-							scriptAction action = null;
+							ScriptAction action = null;
 							//try {action = (scriptAction) Class.forName(app.getClass().getName() + "$script_" + actionArray[0]).getDeclaredConstructors()[0].newInstance(new Object[]{app, params, Script});}
 							try {
-								action = (scriptAction) Class.forName(pie.app.getClass().getName() + "$script_" + actionArray[0]).getDeclaredConstructors()[0].newInstance(new Object[]{pie.app});
+								action = (ScriptAction) Class.forName(pie.app.getClass().getName() + "$script_" + actionArray[0]).getDeclaredConstructors()[0].newInstance(new Object[]{pie.app});
 								action.setup(params, Script);
 							} catch (Exception e) {
 								pie.log.printlg(e);
@@ -169,14 +170,14 @@ public class level {
 								scriptTemp.get(frame).add(action);
 							} else {
 								// Initiate Arraylist.
-								scriptTemp.put(frame, new ArrayList<scriptAction>());
+								scriptTemp.put(frame, new ArrayList<ScriptAction>());
 								scriptTemp.get(frame).add(action);
 							}
 						}
 
 						// Turn over contents of temporary container to "children" array.
 						for (@SuppressWarnings("rawtypes") Map.Entry entry : scriptTemp.entrySet()) {
-							scriptAction[] tempActions = new scriptAction[ scriptTemp.get(entry.getKey()).size() ];
+							ScriptAction[] tempActions = new ScriptAction[ scriptTemp.get(entry.getKey()).size() ];
 							for (int i = 0; i < scriptTemp.get(entry.getKey()).size(); i++) {
 								tempActions[i] = scriptTemp.get(entry.getKey()).get(i);
 							}
@@ -239,8 +240,8 @@ public class level {
 			}
 
 			// Else, print error.
-		} else {
-			pie.log.printlg("Level " + pie.app.dataPath(filename) + " not found.");
-		}
+		//} else {
+		//	pie.log.printlg("Level " + pie.app.dataPath(filename) + " not found.");
+		//}
 	}
 }

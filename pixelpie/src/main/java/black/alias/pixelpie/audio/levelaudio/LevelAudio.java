@@ -1,6 +1,6 @@
-package black.alias.pixelpie.sound.levelSound;
+package black.alias.pixelpie.audio.levelaudio;
 
-public interface levelSound {
+public interface LevelAudio {
 	public void play();
 	public void pause();
 	public void update();

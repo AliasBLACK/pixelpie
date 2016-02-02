@@ -3,13 +3,14 @@ package black.alias.pixelpie.loader;
 import java.util.HashMap;
 
 import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.data.StringDict;
 import processing.data.XML;
 import black.alias.pixelpie.PixelPie;
-import black.alias.pixelpie.gameObject;
-import black.alias.pixelpie.level.level;
-import black.alias.pixelpie.level.tileSet;
-import black.alias.pixelpie.sprite.decal;
+import black.alias.pixelpie.GameObject;
+import black.alias.pixelpie.level.Level;
+import black.alias.pixelpie.level.TileSet;
+import black.alias.pixelpie.sprite.Decal;
 
 /**
  * Level loading.
@@ -44,7 +45,7 @@ public class levelLoader extends Thread{
 
 			// Get the level file.
 			String levelName = pie.loadLevelTarget;
-			level level = pie.lvl.get(levelName);
+			Level level = pie.lvl.get(levelName);
 
 			// Set the room dimensions.
 			pie.roomWidth = level.levelWidth;
@@ -91,7 +92,7 @@ public class levelLoader extends Thread{
 				pie.loadingText = "Retrieving Tilesets";
 
 				// Resize tileSetList according to tileSet count.
-				pie.tileSetList = new tileSet[ level.tileSets.length ];
+				pie.tileSetList = new TileSet[ level.tileSets.length ];
 
 				// Empty tileSetRef.
 				pie.tileSetRef = "";
@@ -116,7 +117,7 @@ public class levelLoader extends Thread{
 					int tileRows = image.getInt("height") / level.tileHeight;
 
 					// Create new tileSet.
-					pie.tileSetList[i] = new tileSet(tileRows, tileColumns, level.tileWidth, level.tileHeight, gid, imageFileName, pie);
+					pie.tileSetList[i] = new TileSet(tileRows, tileColumns, level.tileWidth, level.tileHeight, gid, imageFileName, pie);
 
 					// Append to tileRef.
 					for (int k = 0; k < tileRows * tileColumns; k++){
@@ -207,31 +208,25 @@ public class levelLoader extends Thread{
 								localFile = PixelPie.getProp(localProp, "file");
 							}
 
-							// If file specified is valid.
-							if (pie.fileExists(pie.app.dataPath("sounds/" + localFile))) {
+							// If range is NOT specified.
+							if (localRange == 0) {
+								pie.createEnvSound(
+										Math.round(object.getFloat("x")),
+										Math.round(object.getFloat("y")),
+										localFile,
+										true
+										);
 
-								// If range is NOT specified.
-								if (localRange == 0) {
-									pie.createEnvSound(
-											Math.round(object.getFloat("x")),
-											Math.round(object.getFloat("y")),
-											"sounds/" + localFile,
-											true
-											);
-
-									// If range is specified.
-								} else {
-									pie.createEnvSound(
-											Math.round(object.getFloat("x")),
-											Math.round(object.getFloat("y")),
-											"sounds/" + localFile,
-											localRange,
-											true
-											);
-								}
-
-								// If file is not valid, throw error. 
-							} else {pie.log.printlg("Sound " + pie.app.dataPath("sounds/" + localFile) + " cannot be found.");}
+								// If range is specified.
+							} else {
+								pie.createEnvSound(
+										Math.round(object.getFloat("x")),
+										Math.round(object.getFloat("y")),
+										localFile,
+										localRange,
+										true
+										);
+							}
 						}
 					}
 
@@ -282,7 +277,7 @@ public class levelLoader extends Thread{
 								// If decal has a GID, create a tile decal.
 								if (object.getInt("gid") != 0) {
 									pie.decals.add(
-											new decal(
+											new Decal(
 													Math.round(object.getFloat("x")),
 													Math.round(object.getFloat("y")),
 													myDepth,
@@ -297,7 +292,7 @@ public class levelLoader extends Thread{
 								// If decal is a sprite.
 							} else if (pie.spr.get(mySprite) != null){
 								pie.decals.add(
-										new decal(
+										new Decal(
 												Math.round(object.getFloat("x")),
 												Math.round(object.getFloat("y")),
 												myDepth,
@@ -325,7 +320,7 @@ public class levelLoader extends Thread{
 						if (obj != null) {
 
 							// Create temp object for modification.
-							gameObject gameObject = (gameObject)obj;
+							GameObject gameObject = (GameObject)obj;
 
 							// Check if object has any properties.
 							if (object.hasChildren()) {
@@ -372,7 +367,8 @@ public class levelLoader extends Thread{
 
 				// Reset levelBuffer for current level.
 				pie.loadingText = "Generating Level Buffer";
-				pie.levelBuffer.resize(pie.roomWidth, pie.roomHeight);
+				//pie.levelBuffer.resize(pie.roomWidth, pie.roomHeight);
+				pie.levelBuffer = pie.app.createImage(pie.roomWidth, pie.roomHeight, PConstants.ARGB);
 				pie.generateLevelBuffer();
 			}
 
@@ -381,7 +377,7 @@ public class levelLoader extends Thread{
 
 			// Force garbage collection.
 			System.gc();
-
+			
 			// Set loading flag to false (remove loading screen).
 			pie.levelLoading = false;
 		}

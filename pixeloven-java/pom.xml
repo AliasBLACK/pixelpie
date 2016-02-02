@@ -1,0 +1,30 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>black.alias</groupId>
+    <artifactId>pixelpie-main</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+  <artifactId>pixeloven-java</artifactId>
+  <name>Minim Sound Device for PixelPie</name>
+  <description>PixelPie soundDevice and soundFile interface implemented with Minim</description>
+  <dependencies>
+  	<dependency>
+  		<groupId>black.alias</groupId>
+  		<artifactId>pixelpie</artifactId>
+  		<version>0.0.1</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>ddf.minim</groupId>
+  		<artifactId>ddf.minim</artifactId>
+  		<version>2.2.0</version>
+		<scope>system</scope>
+		<systemPath>${basedir}/lib/minim.jar</systemPath>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.processing</groupId>
+  		<artifactId>core</artifactId>
+  		<version>3.0.1</version>
+  	</dependency>
+  </dependencies>
+</project>
