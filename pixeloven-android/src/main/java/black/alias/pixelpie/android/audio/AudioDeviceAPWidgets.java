@@ -1,19 +1,19 @@
 package black.alias.pixelpie.android.audio;
 
-import processing.core.PApplet;
+import android.app.Activity;
 import black.alias.pixelpie.audio.AudioDevice;
 import black.alias.pixelpie.audio.AudioFile;
 
 public class AudioDeviceAPWidgets implements AudioDevice {
 	
-	final PApplet app;
+	final Activity activity;
 	
-	public AudioDeviceAPWidgets (PApplet app) {
-		this.app = app;
+	public AudioDeviceAPWidgets (Activity activity) {
+		this.activity = activity;
 	}
 
 	public AudioFile createSound(String filename) {
-		return new AudioFileAPWidgets(app, filename);
+		return new AudioFileAPWidgets(activity, filename);
 	}
 
 }

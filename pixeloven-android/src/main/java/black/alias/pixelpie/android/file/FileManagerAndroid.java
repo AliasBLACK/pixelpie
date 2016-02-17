@@ -1,17 +1,17 @@
 package black.alias.pixelpie.android.file;
 
-import processing.core.PApplet;
+import android.app.Activity;
 import black.alias.pixelpie.file.FileManager;
 
 public class FileManagerAndroid implements FileManager {
 	
-	final PApplet app;
+	final Activity activity;
 	
-	public FileManagerAndroid (PApplet app) {
-		this.app = app;
+	public FileManagerAndroid (Activity activity) {
+		this.activity = activity;
 	}
 
 	public String getDirectory() {
-		return app.getActivity().getFilesDir().toString();
+		return activity.getFilesDir().toString();
 	}
 }

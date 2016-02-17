@@ -1,7 +1,5 @@
 package black.alias.pixelpie.loader;
 
-import java.util.HashMap;
-
 import processing.data.*;
 import black.alias.pixelpie.*;
 import black.alias.pixelpie.level.Level;
@@ -13,8 +11,6 @@ import black.alias.pixelpie.sprite.*;
  *
  */
 public class dataLoader extends Thread{
-	final HashMap<String, Sprite> spr = new HashMap<String, Sprite>();
-	final HashMap<String, Level> lvl = new HashMap<String, Level>();
 	final PixelPie pie;
 	
 	public dataLoader(PixelPie pie) {
@@ -26,7 +22,7 @@ public class dataLoader extends Thread{
 	}
 
 	/**
-	 * Method to load all the defined assets from json files.
+	 * Method to load all the defined assets from JSON files.
 	 */
 	public void run() {
 		String dataString;
@@ -42,7 +38,7 @@ public class dataLoader extends Thread{
 		data = JSONArray.parse(dataString);
 		for (int i = 0; i < data.size(); i++) {    
 			JSONObject sprite = data.getJSONObject(i); 
-			spr.put(
+			pie.spr.put(
 					sprite.getString("Name"),
 					new Sprite(
 							sprite.getInt("Frames"),
@@ -65,25 +61,11 @@ public class dataLoader extends Thread{
 		data = JSONArray.parse(dataString);
 		for (int i = 0; i < data.size(); i++) {
 			JSONObject level = data.getJSONObject(i);
-			lvl.put(level.getString("Name"), new Level(level.getString("Location"), pie));
-			lvl.get(level.getString("Name")).levelName = level.getString("Name");
+			pie.lvl.put(level.getString("Name"), new Level(level.getString("Location"), pie));
+			pie.lvl.get(level.getString("Name")).levelName = level.getString("Name");
 		}
 
 		// Start game.
 		pie.loaded = true;
-	}
-
-	/**
-	 * @return the sprite database.
-	 */
-	public final HashMap<String, Sprite> getSpr() {
-		return spr;
-	}
-
-	/**
-	 * @return the level database.
-	 */
-	public final HashMap<String, Level> getLvl() {
-		return lvl;
 	}
 }

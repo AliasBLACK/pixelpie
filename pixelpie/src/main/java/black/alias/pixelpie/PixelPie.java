@@ -24,26 +24,22 @@ import black.alias.pixelpie.graphics.*;
  *
  */
 public class PixelPie {
+	public ArrayList<GameObject> objectArray = new ArrayList<GameObject>();
 	public final PApplet app;
 	public final AudioDevice SoundDevice;
 	public final Logger log;
 	public final FileManager FileSystem;
 	public int displayX, displayY, roomWidth, roomHeight, matrixWidth, matrixHeight,
 		pixelSize, minScale, maxScale, index;
-	public final PImage canvas;
 	public float frameRate, frameProgress;
 	public boolean displayFPS, loaded, waitThread, lighting, levelLoading, isPaused;
 	public int background, black, white;
 	public int[] pixelMatrix;
 	public StringList depthBuffer;
-	public CollisionDetector collider;
 	public Script currentScript;
 	
-	private int renderTileStartX, renderTileStartY, renderTileEndX, renderTileEndY;
-	
-	// Threaded loaders.
+	// Threaded loader.
 	public levelLoader lvlLoader;
-	public dataLoader datLoader;
 	
 	// Containers for object instances.
 	public final ArrayList<GameObject> objects;
@@ -56,7 +52,7 @@ public class PixelPie {
 	public final HashMap<String, Level> lvl;
 
 	// Stuff for level.
-	public String currentLevelName, loadingText, tileSetRef;
+	public String loadingText, tileSetRef;
 	public String loadLevelTarget = "";
 	public int levelZoom, levelBrightness;
 	public Level currentLevel;
@@ -64,8 +60,8 @@ public class PixelPie {
 
 	// Stuff needed to make lighting work.
 	public float gamma;
-	public float[] lightMapMult;
 	public PImage levelBuffer;
+	public PImage[] backgroundBuffer;
 	public PGraphics lightMap;
 	
 	/**
@@ -111,6 +107,7 @@ public class PixelPie {
 		
 		// Set desired frameRate, and keep record of it for animation purposes.
 		this.frameRate = fps;
+		app.noStroke();
 		app.frameRate(fps);
 		
 		// Set PApplet openGL rendering parameters.
@@ -137,15 +134,6 @@ public class PixelPie {
 		// Initiate pixelMatrix.
 		matrixWidth = Math.round(app.width / pixelSize);
 		matrixHeight = Math.round(app.height / pixelSize);
-		canvas = app.createImage(matrixWidth, matrixHeight, PConstants.ARGB);
-		pixelMatrix = canvas.pixels;
-
-		// Initiate levelBuffer.
-		levelBuffer = app.createImage(1, 1, PConstants.ARGB);
-
-		// Initiate collision detector.
-		collider = new CollisionDetector(this);
-		collider.start();
 
 		// Initiate depthBuffers.
 		depthBuffer = new StringList();
@@ -158,12 +146,6 @@ public class PixelPie {
 		
 		// Initiate logger.
 		this.log = new Logger(app, this);
-		
-		// Initiate dataLoader.
-		datLoader = new dataLoader(this);
-		datLoader.start();
-		this.spr = datLoader.getSpr();
-		this.lvl = datLoader.getLvl();
 		
 		// Initiate levelLoader.
 		lvlLoader = new levelLoader(this); 
@@ -178,9 +160,13 @@ public class PixelPie {
 		// Register methods with Processing.
 		app.registerMethod("draw", this);
 		
+		// Create asset holders.
+		spr = new HashMap<String, Sprite>();
+		lvl = new HashMap<String, Level>();
+		
 		// Start loading assets.
 		loaded = false;
-		datLoader.run();
+		new dataLoader(this).start();
 	}
 	
 	/**
@@ -188,19 +174,19 @@ public class PixelPie {
 	 */
 	public void draw() {
 		
-		// Prepare canvas for drawing.
-		canvas.loadPixels();
+		// Erase previous draw.
+		app.background(0);
 
 		// If assets are loaded, run loop functions.
 		if (loaded && !levelLoading) {
-			waitThread = true;
-			collider.run();
+			collisionDetect();
 			updateScript();
-			updateLevel();
+			updateLevel();			
 			updateDecals();
 			updateObjects();
-			updateGraphics();
-			updateSounds();
+			//updateGraphics();
+			//updateSounds();
+			PApplet.println(app.frameCount);
 		}
 
 		// Else, show loading screen.
@@ -211,56 +197,33 @@ public class PixelPie {
 		for (String str : depthBuffer) {
 			switch(toInt(str.substring(4,5))) {  
 
-			// If entry is a sprite.
+			// If entry is a game object.
 			case 0:
-				drawSpriteToMatrix (
-						intToSign(toInt(str.substring(5,6))) * toInt(str.substring(6,10)),
-						intToSign(toInt(str.substring(10,11))) * toInt(str.substring(11,15)),
-						toInt(str.substring(15,19)),
-						toInt(str.substring(19,22)),
-						toInt(str.substring(22,23)),
-						toInt(str.substring(23,24)),
-						str.substring(24)
-						);
+				objects.get(toInt(str.substring(5))).render();
 				break;
 
-				// If entry is a tile.
+			// If entry is a decal.				
 			case 1:
-				int gid = toInt(str.substring(16,20));
-				drawTile (
-						intToSign(toInt(str.substring(5,6))) * toInt(str.substring(6,10)),
-						intToSign(toInt(str.substring(10,11))) * toInt(str.substring(11,15)),
-						gid,
-						toInt(str.substring(15,16)),
-						tileSetList[toInt(tileSetRef.substring((gid - 1) * 2, gid * 2))]
-						);
+				decals.get(toInt(str.substring(5))).render();
 				break;
 
+			// If entry is a graphic.
 			case 2:
-				drawGraphicToMatrix (
-						intToSign(toInt(str.substring(5,6))) * toInt(str.substring(6,10)),
-						intToSign(toInt(str.substring(10,11))) * toInt(str.substring(11,15)),
-						toInt(str.substring(15,16)),
-						toInt(str.substring(16))
-						);
 				break;
 			}
 		}
 		depthBuffer.clear();
 		
-		// End canvas editing and draw to screen.
-		canvas.updatePixels();
-		app.image(canvas, 0, 0, app.width, app.height);
-		
 		// Level loading screen.
 		if (levelLoading) {
+			app.textSize(32);
 			app.fill(black);
 			app.rect(0, 0, app.width, app.height);
 			app.fill(white);
 			app.textAlign(PConstants.CENTER, PConstants.BOTTOM);
-			app.text("Loading...", app.width * 0.5f, app.height * 0.5f - 2);
+			app.text("Loading...", app.width/2, app.height/2 + 2);
 			app.textAlign(PConstants.CENTER, PConstants.TOP);
-			app.text(loadingText, app.width * 0.5f, app.height * 0.5f + 2);
+			app.text(loadingText, app.width/2, app.height/2 - 2);
 		}
 
 		// Show FPS
@@ -269,261 +232,67 @@ public class PixelPie {
 			app.fill(white);
 			app.text(app.frameRate, 20, 20);
 		}
-
-		// Wait for controller class to sync.
-		while (waitThread) {};
 	}
 	
 	/**
-	 * Draw a pixel onto pixelMatrix array.
-	 * @param x
-	 * @param y
-	 * @param rgb
+	 * Collision Detection.
 	 */
-	private void drawPixel(int x, int y, int rgb) {
-		drawPixel(x, y, false, rgb, 0);
-	}
+	private void collisionDetect() {
+		
+		// Go through the list and detect collisions.
+		if (objectArray.size() != 0) {
+			for (int i = 0; i < objectArray.size(); i++) {
 
-	/**
-	 * Draw a pixel onto pixelMatrix array.
-	 * @param x
-	 * @param y
-	 * @param lighted
-	 * @param rgb
-	 */
-	private void drawPixel(int x, int y, boolean lighted, int rgb) {
-		drawPixel(x, y, lighted, rgb, 0);
-	}
+				// Select object 1.
+				GameObject obj1 = objectArray.get(i);
 
-	/**
-	 * Draw a pixel onto pixelMatrix array.
-	 * @param x
-	 * @param y
-	 * @param lighted
-	 * @param rgb
-	 * @param ilum
-	 */
-	private void drawPixel(int x, int y, boolean lighted, int rgb, float ilum) {
+				// Test if object 1 is flagged as destroyed. Remove it from
+				// list.
+				if (obj1.destroyed) {
+					objectArray.remove(i);
+					i--;
 
-		// Test for alpha value of pixel.
-		switch ((rgb >> 24) & 0xFF) {
+					// Else, proceed with collision testing if noCollide is
+					// false.
+				} else if (!obj1.noCollide) {
+					for (int k = i + 1; k < objectArray.size(); k++) {
 
-		// If pixel is completely transparent, ignore.
-		case 0:
-			break;
+						// Get object 2.
+						GameObject obj2 = objectArray.get(k);
 
-		// If pixel is opaque, replace original pixel.
-		case 255:
-			if (lighted) {
-				pixelMatrix[(x - displayX) + ((y - displayY) * matrixWidth)] = applyLight(x, y, rgb, ilum);
-			} else {
-				pixelMatrix[(x - displayX) + ((y - displayY) * matrixWidth)] = rgb;
-			}
-			break;
+						// If object 2's noCollide is also false...
+						if (!obj2.noCollide) {
 
-		// If pixel has alpha value, modify original pixel instead.
-		default:
-			int i = (x - displayX) + ((y - displayY) * matrixWidth);
+							// See if they collide.
+							if (PixelPie.objCollision(obj1, obj2)) {
 
-			// If pixel is lighted, add environmental lighting to it.
-			if (lighted) {
+								// Run the collision event in each object in
+								// event of collision.
+								obj1.other = obj2;
+								obj1.collide();
 
-				// Get gamma value of this pixel from lightmap.
-				float gamma = lightMapMult[x + roomWidth * y];
+								obj2.other = obj1;
+								obj2.collide();
+							}
 
-				// If sprite has an IlumMap, apply IlumMap values of this pixel.
-				if (ilum > 0) {
-					gamma = PApplet.lerp(gamma, 1, ilum);
-				}
+							// If there's a velocity vector, see if it will
+							// collide with anything next frame.
+							if ((obj1.xSpeed != 0) || (obj1.ySpeed != 0) || (obj2.xSpeed != 0)
+									|| (obj2.ySpeed != 0)) {
+								if (PixelPie.objColPredictive(obj1, obj2)) {
 
-				// Set the RGB value of pixel.
-				pixelMatrix[i] = app.lerpColor(pixelMatrix[i], app.lerpColor(black, rgb, gamma), ((rgb >> 24) & 0xFF) / 255.0f);
+									// Run the collision event in each
+									// object in event of collision.
+									obj1.otherPredict = obj2;
+									obj1.colPredict();
 
-				// Else, just calculated modified color without lighting.
-			} else {
-				pixelMatrix[i] = app.lerpColor(pixelMatrix[i], rgb, ((rgb >> 24) & 0xFF) / 255.0f);
-			}
-			break;
-		}
-	}
-
-	/**
-	 * Draw sprite onto pixelMatrix array.
-	 * @param x
-	 * @param y
-	 * @param frame
-	 * @param alpha
-	 * @param testResult
-	 * @param spriteName
-	 */
-	public void drawSpriteToMatrix(int x, int y, int frame, int alpha, int testResult, String spriteName) {
-		drawSpriteToMatrix(x, y, frame, alpha, testResult, 0, spriteName);
-	}
-
-	/**
-	 * Draw sprite onto pixelMatrix array.
-	 * @param x
-	 * @param y
-	 * @param frame
-	 * @param alpha
-	 * @param testResult
-	 * @param lighted
-	 * @param spriteName
-	 */
-	public void drawSpriteToMatrix (int x, int y, int frame, int alpha, int testResult, int lighted, String spriteName) {
-
-		// Get sprite.
-		Sprite sprite = spr.get(spriteName);
-
-		// Fail safe in case sprite is missing.
-		if (sprite == null) {testResult = 0;}
-
-		switch (testResult) {    
-		// If partially on screen...
-		case 1:    
-			// Get margins.
-			int startX = (x < displayX) ? (displayX - x) : 0;
-			int endX = (x + sprite.pixWidth >= Math.round(app.width/pixelSize) + displayX) ? ((Math.round(app.width/pixelSize) + displayX) - x) : sprite.pixWidth;
-			int startY = (y < displayY) ? (displayY - y) : 0;
-			int endY = (y + sprite.sprite.height >= Math.round(app.height/pixelSize) + displayY) ? ((Math.round(app.height/pixelSize) + displayY) - y) : sprite.sprite.height;
-
-			// Render partially to screen.
-			for (int i = startX; i < endX; i++) {
-				for (int k = startY; k < endY; k++) {
-
-					// If sprite has transparency.
-					if (alpha < 255) {
-
-						// If lighted.
-						if (lighted == 1) {
-							drawPixel(
-									i + x, k + y, true,
-									applyAlpha(alpha, sprite.sprite.pixels[i + (sprite.pixWidth * frame) + (k * sprite.sprite.width)]),
-									(sprite.hasIlum) ? sprite.IlumMap[i + (sprite.pixWidth * frame) + k * sprite.sprite.width] : 0
-									);
-
-							// If not lighted.
-						} else {drawPixel(i + x, k + y, applyAlpha(alpha, sprite.sprite.pixels[i + (sprite.pixWidth * frame) + (k * sprite.sprite.width)]));}
-
-					// If sprite is opaque.
-					} else {
-
-						// If lighted.
-						if (lighted == 1) {
-							drawPixel(
-									i + x, k + y, true,
-									sprite.sprite.pixels[i + (sprite.pixWidth * frame) + (k * sprite.sprite.width)],
-									(sprite.hasIlum) ? sprite.IlumMap[i + (sprite.pixWidth * frame) + k * sprite.sprite.width] : 0
-									);
-
-						// If not lighted.
-						} else {drawPixel(i + x, k + y, sprite.sprite.pixels[i + (sprite.pixWidth * frame) + (k * sprite.sprite.width)]);}
+									obj2.otherPredict = obj1;
+									obj2.colPredict();
+								}
+							}
+						}
 					}
 				}
-			}
-			break;
-
-		// If entirely on screen, render all.
-		case 2:
-			for (int i = 0; i < sprite.pixWidth; i++) {
-				for (int k = 0; k < sprite.sprite.height; k++) {
-
-					// If sprite has transparency.
-					if (alpha < 255) {
-
-						// If lighted.
-						if (lighted == 1) {
-							drawPixel(
-									i + x, k + y, true,
-									applyAlpha(alpha, sprite.sprite.pixels[PApplet.constrain(i + (sprite.pixWidth * frame) + (k * sprite.sprite.width), 0, sprite.sprite.pixels.length - 1)]),
-									(sprite.hasIlum) ? sprite.IlumMap[i + (sprite.pixWidth * frame) + k * sprite.sprite.width] : 0
-									);
-
-						// If not lighted.
-						} else {drawPixel(i + x, k + y, applyAlpha(alpha, sprite.sprite.pixels[PApplet.constrain(i + (sprite.pixWidth * frame) + (k * sprite.sprite.width), 0, sprite.sprite.pixels.length - 1)]));}
-
-					// If sprite is opaque.
-					} else {
-
-						// If lighted.
-						if (lighted == 1) {
-							drawPixel(
-									i + x, k + y, true,
-									sprite.sprite.pixels[PApplet.constrain(i + (sprite.pixWidth * frame) + (k * sprite.sprite.width), 0, sprite.sprite.pixels.length - 1)],
-									(sprite.hasIlum) ? sprite.IlumMap[i + (sprite.pixWidth * frame) + k * sprite.sprite.width] : 0
-									);
-
-						// If not lighted.
-						} else {drawPixel(i + x, k + y, sprite.sprite.pixels[PApplet.constrain(i + (sprite.pixWidth * frame) + (k * sprite.sprite.width), 0, sprite.sprite.pixels.length - 1)]);}
-					}
-				}
-			}
-			break;
-		}
-	}
-
-	/**
-	 * Add sprite to depthBuffer.
-	 * @param x
-	 * @param y
-	 * @param depth
-	 * @param frame
-	 * @param spriteName
-	 */
-	public void drawSprite(int x, int y, int depth, int frame, String spriteName) {
-		drawSprite(x, y, depth, frame, 255, 0, spriteName);
-	}
-
-	/**
-	 * Add sprite to depthBuffer.
-	 * @param x
-	 * @param y
-	 * @param depth
-	 * @param frame
-	 * @param alpha
-	 * @param spriteName
-	 */
-	public void drawSprite(int x, int y, int depth, int frame, int alpha, String spriteName) {
-		drawSprite(x, y, depth, frame, alpha, 0, spriteName);
-	}
-
-	/**
-	 * Add sprite to depthBuffer.
-	 * @param x
-	 * @param y
-	 * @param depth
-	 * @param frame
-	 * @param alpha
-	 * @param lighted
-	 * @param spriteName
-	 */
-	public void drawSprite(int x, int y, int depth, int frame, int alpha, int lighted, String spriteName) {
-
-		// Get sprite.
-		Sprite sprite = spr.get(spriteName);
-
-		// Test if all edges are on screen.
-		int testResult = toInt(testOnScreen(x, y))
-				+ toInt(testOnScreen(x + sprite.pixWidth, y + sprite.sprite.height));
-
-		// If partially or completely on-screen, render it.
-		if (testResult > 0) {
-			if (depth == 0) {
-				drawSpriteToMatrix(x, y, frame, alpha, testResult, lighted, spriteName);
-
-				// Else, add to depthBuffer.
-			} else {
-				depthBuffer.append(PApplet.nf(depth, 4)
-						+ "0" + PApplet.str(signToInt(x))
-						+ PApplet.nf(PApplet.abs(x), 4)
-						+ PApplet.str(signToInt(y))
-						+ PApplet.nf(PApplet.abs(y), 4)
-						+ PApplet.nf(frame, 4)
-						+ PApplet.nf(alpha, 3)
-						+ PApplet.str(testResult)
-						+ PApplet.str(lighted)
-						+ spriteName
-				);
 			}
 		}
 	}
@@ -566,36 +335,6 @@ public class PixelPie {
 	 */
 	public boolean testOnLevel(int x, int y) {
 		return ((x >= 0) && (x < roomWidth) && (y >= 0) && (y < roomHeight)) ? true : false;
-	}
-	
-	/**
-	 * Apply gamma on lightMap to pixel.
-	 * @param x
-	 * @param y
-	 * @param originalColor
-	 * @return
-	 */
-	public int applyLight(int x, int y, int originalColor) {
-		return applyLight(x, y, originalColor, 0);
-	}
-
-	/**
-	 * Apply gamma on lightMap to pixel.
-	 * @param x
-	 * @param y
-	 * @param originalColor
-	 * @param ilum
-	 * @return
-	 */
-	public int applyLight(int x, int y, int originalColor, float ilum) {
-
-		gamma = lightMapMult[x + roomWidth * y];
-		if (ilum > 0) {
-			gamma = PApplet.lerp(gamma, 1, ilum);
-		}
-
-		// Recalculate resultant color value.
-		return app.lerpColor(black, originalColor, gamma);
 	}
 	
 	/**
@@ -776,8 +515,6 @@ public class PixelPie {
 		}
 		return yOffset;
 	}
-	
-
 
 	/**
 	 * Collision Single Point. (return object collided with)
@@ -1112,162 +849,16 @@ public class PixelPie {
 	}
 	
 	/**
-	 * Draw tile onto PixelMatrix (with depth buffer).
-	 * @param x
-	 * @param y
-	 * @param depth
-	 * @param gid
-	 */
-	public void drawTileDepth(int x, int y, int depth, int gid) {
-		drawTileDepth(x, y, depth, 0, gid);
-	}
-
-	/**
-	 * Draw tile onto PixelMatrix (with depth buffer).
-	 * @param x
-	 * @param y
-	 * @param depth
-	 * @param lighted
-	 * @param gid
-	 */
-	public void drawTileDepth(int x, int y, int depth, int lighted, int gid) {
-		depthBuffer.append(PApplet.nf(depth, 4) + "1" + PApplet.str(signToInt(x)) + PApplet.nf(PApplet.abs(x), 4) + PApplet.str(signToInt(y))
-				+ PApplet.nf(PApplet.abs(y), 4) + PApplet.str(lighted) + PApplet.nf(gid, 4));
-	}
-	
-	/**
 	 * Update all decals.
 	 */
-	public void updateDecals() {
-		for (Decal decal : decals) {
+	private void updateDecals() {
+		for (int i = 0; i < decals.size(); i++) {
+			Decal decal = decals.get(i);
 			if (!isPaused) {
 				decal.animate();
 			}
-			decal.update();
+			decal.update(i);
 		}
-	}
-	
-	/**
-	 * Load a new level.
-	 * @param levelName
-	 */
-	public void loadLevel(String levelName) {
-		loadLevelTarget = levelName;
-		lvlLoader.run();
-	}
-	
-	/**
-	 * Draw light spots on lightMap.
-	 * @param x
-	 * @param y
-	 * @param Width
-	 * @param Height
-	 * @param brightness
-	 * @param pg
-	 */
-	public static void drawLight(int x, int y, int Width, int Height, int brightness, PGraphics pg) {
-		pg.beginDraw();
-		pg.noStroke();
-		pg.fill(255, brightness / 4);
-		for (int i = 0; i < 10; i++) {
-			pg.ellipse(x, y, Width / (i + 1), Height / (i + 1));
-		}
-		pg.endDraw();
-	}
-	
-	/**
-	 * Super Fast Blur (by Mario Klingemann <http://incubator.quasimondo.com>)
-	 * @param img
-	 * @param radius
-	 */
-	public static void fastblur(PImage img, int radius) {
-		if (radius < 1) {
-			return;
-		}
-		img.loadPixels();
-		int w = img.width;
-		int h = img.height;
-		int wm = w - 1;
-		int hm = h - 1;
-		int wh = w * h;
-		int div = radius + radius + 1;
-		int r[] = new int[wh];
-		int g[] = new int[wh];
-		int b[] = new int[wh];
-		int rsum, gsum, bsum, x, y, i, p, p1, p2, yp, yi, yw;
-		int vmin[] = new int[PApplet.max(w, h)];
-		int vmax[] = new int[PApplet.max(w, h)];
-		int[] pix = img.pixels;
-		int dv[] = new int[256 * div];
-		for (i = 0; i < 256 * div; i++) {
-			dv[i] = (i / div);
-		}
-		yw = yi = 0;
-		for (y = 0; y < h; y++) {
-			rsum = gsum = bsum = 0;
-			for (i = -radius; i <= radius; i++) {
-				p = pix[yi + PApplet.min(wm, PApplet.max(i, 0))];
-				rsum += (p & 0xff0000) >> 16;
-			gsum += (p & 0x00ff00) >> 8;
-		bsum += p & 0x0000ff;
-			}
-			for (x = 0; x < w; x++) {
-				r[yi] = dv[rsum];
-				g[yi] = dv[gsum];
-				b[yi] = dv[bsum];
-				if (y == 0) {
-					vmin[x] = PApplet.min(x + radius + 1, wm);
-					vmax[x] = PApplet.max(x - radius, 0);
-				}
-				p1 = pix[yw + vmin[x]];
-				p2 = pix[yw + vmax[x]];
-				rsum += ((p1 & 0xff0000) - (p2 & 0xff0000)) >> 16;
-			gsum += ((p1 & 0x00ff00) - (p2 & 0x00ff00)) >> 8;
-		bsum += (p1 & 0x0000ff) - (p2 & 0x0000ff);
-		yi++;
-			}
-			yw += w;
-		}
-		for (x = 0; x < w; x++) {
-			rsum = gsum = bsum = 0;
-			yp = -radius * w;
-			for (i = -radius; i <= radius; i++) {
-				yi = PApplet.max(0, yp) + x;
-				rsum += r[yi];
-				gsum += g[yi];
-				bsum += b[yi];
-				yp += w;
-			}
-			yi = x;
-			for (y = 0; y < h; y++) {
-				pix[yi] = 0xff000000 | (dv[rsum] << 16) | (dv[gsum] << 8) | dv[bsum];
-				if (x == 0) {
-					vmin[y] = PApplet.min(y + radius + 1, hm) * w;
-					vmax[y] = PApplet.max(y - radius, 0) * w;
-				}
-				p1 = x + vmin[y];
-				p2 = x + vmax[y];
-				rsum += r[p1] - r[p2];
-				gsum += g[p1] - g[p2];
-				bsum += b[p1] - b[p2];
-				yi += w;
-			}
-		}
-		img.updatePixels();
-	}
-	
-	/**
-	 * Clear all objects.
-	 */
-	public void clearAllObjects() {
-		objects.clear();
-		collider.objectArray.clear();
-		decals.clear();
-		graphics.clear();
-		for (LevelAudio sound : sounds){
-			sound.release();
-		}
-		sounds.clear();
 	}
 
 	/**
@@ -1309,326 +900,39 @@ public class PixelPie {
 			graphic.draw();
 		}
 	}
-
-	/**
-	 * Draw graphics onto pixel matrix.
-	 * @param x
-	 * @param y
-	 * @param testResult
-	 * @param graphicIndex
-	 */
-	public void drawGraphicToMatrix (int x, int y, int testResult, int graphicIndex) {
-
-		// Grab graphic from Arraylist.
-		PGraphics graphic = graphics.get(graphicIndex).graphic;
-
-		// Fail safe in case graphic is missing.
-		if (graphic == null) {testResult = 0;}
-
-		switch (testResult) {    
-		// If partially on screen...
-		case 1:    
-			// Get margins.
-			int startX = (x < displayX) ? (displayX - x) : 0;
-			int endX = (x + graphic.width >= Math.round(app.width/pixelSize) + displayX) ? ((Math.round(app.width/pixelSize) + displayX) - x) : graphic.width;
-			int startY = (y < displayY) ? (displayY - y) : 0;
-			int endY = (y + graphic.height >= Math.round(app.height/pixelSize) + displayY) ? ((Math.round(app.height/pixelSize) + displayY) - y) : graphic.height;
-
-			// Render partially to screen.
-			for (int i = startX; i < endX; i++) {
-				for (int k = startY; k < endY; k++) {
-					drawPixel(i + x, k + y, graphic.pixels[i + (k * graphic.width)]);
-				}
-			}
-			break;
-
-			// If entirely on screen, render all.
-		case 2:
-			for (int i = 0; i < graphic.width; i++) {
-				for (int k = 0; k < graphic.height; k++) {
-					drawPixel(i + x, k + y, graphic.pixels[i + (k * graphic.width)]);
-				}
-			}
-			break;
-		}
-	}
-
-	/**
-	 * Draw graphics.
-	 * @param x
-	 * @param y
-	 * @param depth
-	 * @param graphicIndex
-	 */
-	public void drawGraphic(int x, int y, int depth, int graphicIndex) {
-
-		// Grab graphics from Arraylist.
-		PGraphics graphic = graphics.get(graphicIndex).graphic;
-
-		// Test if all edges are on screen.
-		int testResult = toInt(testOnScreen(x, y))
-				+ toInt(testOnScreen(x + graphic.width, y + graphic.height));
-
-		// If partially or completely on-screen, render it.
-		if (testResult > 0) {
-			if (depth == 0) {
-				drawGraphicToMatrix(x, y, testResult, graphicIndex);
-
-				// Else, add to depthBuffer.
-			} else {
-				depthBuffer.append(PApplet.nf(depth, 4) + "2" + PApplet.str(signToInt(x)) + PApplet.nf(PApplet.abs(x), 4) + PApplet.str(signToInt(y))
-						+ PApplet.nf(PApplet.abs(y), 4) + PApplet.str(testResult) + PApplet.nf(graphicIndex, 4));
-			}
-		}
-	}
 	
 	/**
 	 * Update level.
 	 */
 	public void updateLevel() {
 		if (currentLevel != null) {
-			//int renderTileStartX, renderTileStartY, renderTileEndX, renderTileEndY;
-
-			// Process each background layer.
+			// Process background layers.
 			for (int h = 0; h < currentLevel.backgroundLayers; h++) {
-				
-				// Get scroll rate for this layer.
-				float bgScrollRate = currentLevel.bgScroll[h];
-
-				// Gather some offset'ed dimensions.
-				int bgDisplayX = Math.round(displayX * bgScrollRate);
-				int bgDisplayY = Math.round(displayY * bgScrollRate);
-
-				// Determine how much of the background is seen.
-				renderTileStartX = Math.round(bgDisplayX / currentLevel.tileWidth);
-				renderTileStartY = Math.round(bgDisplayY / currentLevel.tileHeight);
-				renderTileEndX = Math.round((bgDisplayX + (app.width / pixelSize)) / currentLevel.tileWidth);
-				renderTileEndY = Math.round((bgDisplayY + (app.height / pixelSize)) / currentLevel.tileHeight);
-
-				// Render visible background tiles.
-				// Process each background tile.
-				for (int i = renderTileStartX; i <= renderTileEndX; i++) {
-					for (int k = renderTileStartY; k <= renderTileEndY; k++) {
-
-						// Get GID of tile.
-						int index = PApplet.constrain(i + (k * currentLevel.levelColumns), 0, currentLevel.background[h].length - 1);
-						int gid = currentLevel.background[h][index];
-
-						// Draw tile in game level.
-						if (gid != 0) {
-							drawTile(
-									(i * currentLevel.tileWidth) - bgDisplayX + displayX,
-									(k * currentLevel.tileHeight) - bgDisplayY + displayY,
-									gid,
-									tileSetList[toInt(tileSetRef.substring((gid - 1) * 2, gid * 2))]
-									);
-						}
-					}
-				}
+				app.copy(
+						backgroundBuffer[h],
+						Math.round(displayX * currentLevel.bgScroll[h]),
+						Math.round(displayY * currentLevel.bgScroll[h]),
+						matrixWidth,
+						matrixHeight,
+						0,
+						0,
+						app.width,
+						app.height
+						);
 			}
-
-			// If lighting is enabled, draw from levelBuffer.
-			if (lighting) {
-				for (int i = displayX; i < displayX + (app.width/pixelSize); i++ ) {
-					for (int k = displayY; k < displayY + (app.height/pixelSize); k++) {
-						drawPixel(i, k, levelBuffer.pixels[PApplet.constrain(i + k * roomWidth, 0, levelBuffer.pixels.length - 1)]);
-					}
-				}
-
-			// Else, draw normally from tiles.
-			} else {
-
-				// Determine how much of the level is seen.
-				renderTileStartX = PApplet.max(0, displayX / currentLevel.tileWidth);
-				renderTileStartY = PApplet.max(0, displayY / currentLevel.tileHeight);
-				renderTileEndX = PApplet.min(currentLevel.levelColumns, (displayX + (app.width/pixelSize) / currentLevel.tileWidth));
-				renderTileEndY = PApplet.min(currentLevel.levelRows, (displayY + (app.height/pixelSize) / currentLevel.tileHeight));
-
-				// Render visible tiles.
-				// Process each layer.
-				for (int h = 0; h < currentLevel.levelLayers; h++) {
-
-					// Process each tile.
-					for (int i = renderTileStartX; i <= renderTileEndX; i++) {
-						for (int k = renderTileStartY; k <= renderTileEndY; k++) {
-
-							// Get GID of tile.
-							int index = PApplet.constrain(i + (k * currentLevel.levelColumns), 0, currentLevel.levelMap[h].length - 1);
-							int gid = currentLevel.levelMap[h][index];
-
-							// Draw tile in game level.
-							if (gid != 0) {
-								drawTile(
-										i * currentLevel.tileWidth,
-										k * currentLevel.tileHeight,
-										gid,
-										tileSetList[toInt(tileSetRef.substring((gid - 1) * 2, gid * 2))]
-										);
-							}}
-					}
-				}
-			}
-		}
-	}
-	
-	/**
-	 * Generate Level Buffer.
-	 */
-	public void generateLevelBuffer() {
-
-		// Process each layer.
-		for (int h = 0; h < currentLevel.levelLayers; h++) {
-
-			// Process each tile.
-			for (int i = 0; i < currentLevel.levelColumns; i++) {
-				for (int k = 0; k < currentLevel.levelRows; k++) {
-
-					// Get GID of tile.
-					int index = PApplet.constrain(i + (k * currentLevel.levelColumns), 0, currentLevel.levelMap[h].length - 1);
-					int gid = currentLevel.levelMap[h][index];
-
-					// Draw tile in game level.
-					if (gid != 0) {
-						drawTileLevelBuffer (
-								i * currentLevel.tileWidth,
-								k * currentLevel.tileHeight,
-								gid,
-								tileSetList[toInt(tileSetRef.substring((gid - 1) * 2, gid * 2))]
-								);
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * Draw tile on the level buffer.
-	 * @param x
-	 * @param y
-	 * @param gid
-	 * @param tileSet
-	 */
-	public void drawTileLevelBuffer (int x, int y, int gid, TileSet tileSet) {
-
-		// Get tile coordinate on tileSet image.
-		gid -= tileSet.firstGID;
-		int tileX = (gid % tileSet.tileColumns) * tileSet.tileWidth;
-		int tileY = Math.round(gid / tileSet.tileColumns) * tileSet.tileHeight;
-
-		for (int i = 0; i < tileSet.tileWidth; i++) {
-			for (int k = 0; k < tileSet.tileHeight; k++) {
-				tileSet.tileSet.loadPixels();
-				drawPixelLevelBuffer(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
-			}
-		}
-	}
-
-	/**
-	 * Draw pixel on the level buffer.
-	 * @param x
-	 * @param y
-	 * @param rgb
-	 */
-	public void drawPixelLevelBuffer(int x, int y, int rgb) {
-
-		// Test for alpha value of pixel.
-		switch ((rgb >> 24) & 0xFF) {
-
-		// If pixel is completely transparent, ignore.
-		case 0:
-			break;
-
-			// If pixel is opaque, replace original pixel.
-		case 255:
-			if (lighting) {
-				levelBuffer.pixels[x + (y * roomWidth)] = applyLight(x, y, rgb);
-			} else {
-				levelBuffer.pixels[x + (y * roomWidth)] = rgb;
-			}
-			break;
-
-			// If pixel has alpha value, modify original pixel instead.
-		default:
-			int i = x + (y * roomWidth);
-			if (lighting) {
-				levelBuffer.pixels[i] = app.lerpColor(levelBuffer.pixels[i], applyLight(x, y, rgb), ((rgb >> 24) & 0xFF) / 255.0f);
-			} else {
-				levelBuffer.pixels[i] = app.lerpColor(levelBuffer.pixels[i], rgb, ((rgb >> 24) & 0xFF) / 255.0f);
-			}
-			break;
-		}
-	}
-
-	/**
-	 * Draw tile.
-	 * @param x
-	 * @param y
-	 * @param gid
-	 * @param tileSet
-	 */
-	void drawTile(int x, int y, int gid, TileSet tileSet) {
-		drawTile(x, y, gid, 0, tileSet);
-	}
-
-	/**
-	 * Draw tile.
-	 * @param x
-	 * @param y
-	 * @param gid
-	 * @param lighted
-	 * @param tileSet
-	 */
-	void drawTile (int x, int y, int gid, int lighted, TileSet tileSet) {
-
-		// Get tile coordinate on tileSet image.
-		gid -= tileSet.firstGID;
-		int tileX = (gid % tileSet.tileColumns) * tileSet.tileWidth;
-		int tileY = Math.round(gid / tileSet.tileColumns) * tileSet.tileHeight;
-
-		// Test if tile is on-screen.
-		int testResult = 
-				toInt(testOnScreen(x, y)) + 
-				toInt(testOnScreen(x + tileSet.tileWidth, y)) +
-				toInt(testOnScreen(x, y + tileSet.tileHeight)) +
-				toInt(testOnScreen(x + tileSet.tileWidth, y + tileSet.tileHeight));
-
-		// If entirely off-screen.
-		if (testResult == 0) {}    
-
-		// If partially on screen...
-		else if (testResult < 4) {
-			// Get margins.
-			int startX = (x < displayX) ? (displayX - x) : 0;
-			int endX = (x + tileSet.tileWidth >= Math.round(app.width/pixelSize) + displayX) ? ((Math.round(app.width/pixelSize) + displayX) - x) : tileSet.tileWidth;
-			int startY = (y < displayY) ? (displayY - y) : 0;
-			int endY = (y + tileSet.tileHeight >= Math.round(app.height/pixelSize) + displayY) ? ((Math.round(app.height/pixelSize) + displayY) - y) : tileSet.tileHeight;
-
-			// Render partially to screen.
-			for (int i = startX; i < endX; i++) {
-				for (int k = startY; k < endY; k++) {
-					if (lighted == 1) {
-						tileSet.tileSet.loadPixels();
-						drawPixel(i + x, k + y, true, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
-					} else {
-						tileSet.tileSet.loadPixels();
-						drawPixel(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
-					}
-				}
-			}
-
-		// Else, render all.
-		} else {
-			for (int i = 0; i < tileSet.tileWidth; i++) {
-				for (int k = 0; k < tileSet.tileHeight; k++) {
-					if (lighted == 1) { 
-						tileSet.tileSet.loadPixels();
-						drawPixel(i + x, k + y, true, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]); 
-					} else {
-						tileSet.tileSet.loadPixels();
-						drawPixel(i + x, k + y, tileSet.tileSet.pixels[i + tileX + ((tileY + k) * tileSet.tileSet.width)]);
-					}
-				}
-			}
+			
+			// Process foreground layers.
+			app.copy(
+					levelBuffer,
+					displayX,
+					displayY,
+					matrixWidth,
+					matrixHeight,
+					0,
+					0,
+					app.width,
+					app.height
+					);
 		}
 	}
 
@@ -1646,7 +950,7 @@ public class PixelPie {
 				objects.remove(i);
 				i--;
 
-				// Else, update and render.
+			// Else, update and render.
 			} else {
 
 				// If there's a velocity, update object position.
@@ -1671,7 +975,7 @@ public class PixelPie {
 
 					// Render sprite if not invisible and on-screen.
 					if (obj.visible) {
-						obj.draw();
+						obj.draw(i);
 					}
 				}
 			}
@@ -1683,7 +987,7 @@ public class PixelPie {
 	 * @param str
 	 * @return
 	 */
-	static int toInt(String str) {
+	public static int toInt(String str) {
 		return Integer.parseInt(str);
 	}
 	

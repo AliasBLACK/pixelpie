@@ -1,5 +1,10 @@
 package black.alias.pixelpie;
 
+import processing.core.PApplet;
+import processing.core.PConstants;
+import processing.core.PImage;
+//import processing.core.PConstants;
+//import processing.core.PImage;
 import processing.data.StringDict;
 import processing.event.MouseEvent;
 import black.alias.pixelpie.sprite.Sprite;
@@ -7,21 +12,21 @@ import black.alias.pixelpie.sprite.Sprite;
 public class GameObject {
 	public int x, y, xOffset, yOffset, origin, depth, objWidth, objHeight, alpha, index;
 	public int bBoxWidth, bBoxHeight, bBoxXOffset, bBoxYOffset;
-	public int objFrames, waitFrames, currentFrame, currentWait; // Animation
-	
-	// Variables.
+	public int objFrames, waitFrames, currentFrame, currentWait;
 	public float xSpeed, ySpeed;
 	public boolean destroyed, visible, lockBBox, lighted, noLoop, preserveFrame, noCollide, noAnimate, reverseAnim;
 	public String sprite, type;
 	public StringDict parameters;
 	public GameObject other, otherPredict;
-	
-	// Reference to PixelPie.
+	public PImage lightTemp;
 	final PixelPie pie;
 
-	// Constructor.
+	/**
+	 * Constructor.
+	 * @param pie
+	 */
 	public GameObject(PixelPie pie) {
-		visible = true;
+		visible = false;
 		lockBBox = false;
 		type = "Object";
 		sprite = null;
@@ -31,7 +36,7 @@ public class GameObject {
 		this.pie = pie;
 
 		// Add object to collide detect array.
-		pie.collider.objectArray.add(this);
+		pie.objectArray.add(this);
 
 		// Grab index.
 		index = pie.index;
@@ -99,15 +104,22 @@ public class GameObject {
 		refreshBBox();
 	}
 
+	/**
+	 * Assign the sprite for this game object.
+	 * @param SpriteFile
+	 */
 	public void setSprite(String SpriteFile) {
 		if (pie.spr.get(SpriteFile) != null) {
+			visible = true;
 			sprite = SpriteFile;
 			Sprite pix = pie.spr.get(sprite);
 			objWidth = pix.pixWidth;
 			objHeight = pix.sprite.height;
 			objFrames = pix.pixFrames;
 			waitFrames = pix.waitFrames;
+			lightTemp = pie.app.createImage(objWidth, objHeight, PConstants.ARGB);
 		} else {
+			visible = false;
 			sprite = null;
 			objWidth = 0;
 			objHeight = 0;
@@ -123,6 +135,9 @@ public class GameObject {
 		refreshBBox();
 	}
 
+	/**
+	 * Move frames forward if sprite is animated.
+	 */
 	public void animate() {
 		// Update frames according to FPS.
 		if (!reverseAnim) {
@@ -154,7 +169,11 @@ public class GameObject {
 		}
 	}
 
-	public void draw() {
+	/**
+	 * Init draw if object is on screen.
+	 * @param i
+	 */
+	public void draw(int index) {
 		if ( // If it's not on screen, skip draw method.
 				PixelPie.toInt(pie.testOnScreen(x - xOffset, y - yOffset))
 				+ PixelPie.toInt(pie.testOnScreen(x - xOffset + objWidth, y - yOffset))
@@ -162,11 +181,85 @@ public class GameObject {
 				+ PixelPie.toInt(pie.testOnScreen(x - xOffset + objWidth, y - yOffset + objHeight)) == 0) {
 			return;
 		}
-
-		if (lighted && pie.lighting) {
-			pie.drawSprite(x - xOffset, y - yOffset, depth, currentFrame, alpha, 1, sprite);
+		
+		// Add object to render queue.
+		pie.depthBuffer.append(PApplet.nf(depth, 4)	+ 0	+ index);
+	}
+	
+	/**
+	 * Render this object to the screen.
+	 */
+	public void render() {
+		
+		// Grab sprite.
+		Sprite spr = pie.spr.get(sprite);
+		
+		// Draw image to screen.
+		int startX = PApplet.max(0, -(x - xOffset - pie.displayX));
+		int startY = PApplet.max(0, -(y - yOffset - pie.displayY));
+		int drawWidth = objWidth - PApplet.max(0, x - xOffset + objWidth - pie.displayX - pie.matrixWidth) - startX;
+		int drawHeight = objHeight - PApplet.max(0, y - yOffset + objHeight - pie.displayY - pie.matrixHeight) - startY;
+		
+		// Draw lighting.
+		if (pie.lighting) {
+			
+			// Apply lighting to the sprite.
+			lightTemp.copy(spr.sprite, currentFrame * objWidth, 0, objWidth, objHeight, 0, 0, objWidth, objHeight);
+			lightTemp.loadPixels();
+			for (int i = startX; i < drawWidth + startX; i++) {
+				for (int k = startY; k < drawHeight + startY; k++) {
+					
+					// If it's a completely transparent pixel, ignore it.
+					if (((lightTemp.pixels[k * objWidth + i] >> 24) & 0xFF) == 0) {
+						continue;
+						
+					// If not, light it.
+					} else {
+						int lightRed = (pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] >> 16) & 0xFF;
+						int lightGreen = (pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] >> 8) & 0xFF;
+						int lightBlue = pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] & 0xFF;
+						if (spr.IlumMap != null) {
+							float factor = (1 - spr.IlumMap[spr.sprite.width * k + (currentFrame * objWidth + i)]);
+							lightRed = Math.round(lightRed * factor);
+							lightGreen = Math.round(lightGreen * factor);
+							lightBlue = Math.round(lightBlue * factor);
+						}
+						int red = (lightTemp.pixels[k * objWidth + i] >> 16) & 0xFF;
+						int green = (lightTemp.pixels[k * objWidth + i] >> 8) & 0xFF;
+						int blue = lightTemp.pixels[k * objWidth + i] & 0xFF;
+						int alpha = (lightTemp.pixels[k * objWidth + i] >> 24) & 0xFF;
+						
+						lightTemp.pixels[k * objWidth + i] = 
+								alpha << 24 |
+								(red * lightRed) 	/ 255 << 16 |
+								(green * lightGreen)/ 255 << 8 |
+								(blue * lightBlue) 	/ 255;
+					}						
+				}
+			}
+			lightTemp.updatePixels();
+			
+			// Draw the lighted sprite onto screen.
+			pie.app.copy(lightTemp, startX, startY, drawWidth, drawHeight,
+					(startX > 0) ? 0 : (x - xOffset - pie.displayX) * pie.pixelSize,
+					(startY > 0) ? 0 : (y - yOffset - pie.displayY) * pie.pixelSize,
+					drawWidth * pie.pixelSize,
+					drawHeight * pie.pixelSize
+					);
+			
+		// Else, if no lighting.
 		} else {
-			pie.drawSprite(x - xOffset, y - yOffset, depth, currentFrame, alpha, sprite);
+			pie.app.copy(
+					spr.sprite,
+					startX + (currentFrame * objWidth),
+					startY,
+					drawWidth,
+					drawHeight,
+					(startX > 0) ? 0 : (x - xOffset - pie.displayX) * pie.pixelSize,
+					(startY > 0) ? 0 : (y - yOffset - pie.displayY) * pie.pixelSize,
+					drawWidth * pie.pixelSize,
+					drawHeight * pie.pixelSize
+					);
 		}
 	}
 

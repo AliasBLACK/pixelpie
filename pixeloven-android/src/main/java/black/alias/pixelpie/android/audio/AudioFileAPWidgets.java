@@ -1,7 +1,7 @@
 package black.alias.pixelpie.android.audio;
 
-import processing.core.PApplet;
 import black.alias.pixelpie.audio.AudioFile;
+import android.app.Activity;
 import apwidgets.APMediaPlayer;
 
 public class AudioFileAPWidgets implements AudioFile {
@@ -11,8 +11,8 @@ public class AudioFileAPWidgets implements AudioFile {
 	float volume;		// 0.0 to 1.0
 	float pan;			// -1 to 1, 0 is where both speakers are at equal volume.
 	
-	public AudioFileAPWidgets (PApplet app, String filename) {
-		player = new APMediaPlayer(app); 		//create new APMediaPlayer
+	public AudioFileAPWidgets (Activity activity, String filename) {
+		player = new APMediaPlayer(activity); 		//create new APMediaPlayer
 		player.setMediaFile(filename); 			//set the file (files are in data folder)
 	}
 

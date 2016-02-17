@@ -22,6 +22,6 @@ public class Graphics {
 	}
 
 	public void draw() {
-		pie.drawGraphic(x, y, depth, index);
+		//pie.drawGraphic(x, y, depth, index);
 	}
 }

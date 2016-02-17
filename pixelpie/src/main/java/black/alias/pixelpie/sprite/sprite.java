@@ -9,82 +9,103 @@ public class Sprite {
 
 	public int pixFrames, pixWidth, waitFrames, currentFrame, currentWait;
 	public boolean hasIlum;
-	public PImage sprite;
+	public PImage sprite, IlumSprite;
+	//public PImage[] mask;
 	public float[] IlumMap;
 	final PixelPie pie;
 
+	/**
+	 * Constructor.
+	 * @param frames
+	 * @param fps
+	 * @param flipX
+	 * @param flipY
+	 * @param colormap
+	 * @param ilummap
+	 * @param pie
+	 */
 	public Sprite(int frames, int fps, boolean flipX, boolean flipY, String colormap, String ilummap, PixelPie pie) {
 		
 		// Keep reference to PixelPie.
 		this.pie = pie;
+		sprite = pie.app.loadImage(colormap);
+		pixFrames = PApplet.constrain(frames, 1, 999) - 1;
 
-		// Test if file exists.
-		//if (pie.fileExists(pie.app.dataPath(colormap))) {
+		// Flip the sprite if required.
+		if (flipX) {
+			sprite = flipX(sprite, frames);
+		}
+		if (flipY) {
+			sprite = flipY(sprite);
+		}
 
-			// Load the sprite.
-			//sprite = pie.app.loadImage(pie.app.dataPath(colormap));
-			sprite = pie.app.loadImage(colormap);
-			pixFrames = PApplet.constrain(frames, 1, 999) - 1;
+		// Check if animated.
+		// Single frame.
+		if (pixFrames == 0) {
+			pixWidth = sprite.width;
+		}
 
-			// Flip the sprite if required.
-			if (flipX) {
-				sprite = flipX(sprite, frames);
+		// Animated.
+		else {
+
+			// Test if dimensions are correct. (Width/frames should result in an integer)
+			if (sprite.width % frames == 0) {
+				pixWidth = sprite.width / frames;
+			} else {
+				pie.log.printlg("Image " + pie.app.dataPath(colormap) + " has incorrect width for amount of frames.");
 			}
-			if (flipY) {
-				sprite = flipY(sprite);
-			}
 
-			// Check if animated.
-			// Single frame.
-			if (pixFrames == 0) {
-				pixWidth = sprite.width;
-			}
+			// Determine wait time before each frame.
+			waitFrames = PApplet.constrain(Math.round(pie.frameRate / fps), 1, 100) - 1;
+		}
 
-			// Animated.
-			else {
+		// If it has an IlumMap...
+		if (pie.fileExists(ilummap)) {
 
-				// Test if dimensions are correct. (Width/frames should result in an integer)
-				if (sprite.width % frames == 0) {
-					pixWidth = sprite.width / frames;
-				} else {
-					pie.log.printlg("Image " + pie.app.dataPath(colormap) + " has incorrect width for amount of frames.");
+			// Load the IlumMap.
+			IlumSprite = pie.app.loadImage(ilummap);
+
+			// If the IlumMap is the same size as the image...
+			if (IlumSprite.pixels.length == sprite.pixels.length) {
+
+				// Set hasIlum to true.
+				hasIlum = true;
+
+				// Resize the IlumMap array to the size of the image.
+				IlumMap = new float[IlumSprite.pixels.length];
+
+				// Record the brightness of each pixel.
+				for (int i = 0; i < IlumSprite.pixels.length; i++) {
+					IlumMap[i] = (IlumSprite.pixels[i] & 0xFF) / 255.0f;
 				}
 
-				// Determine wait time before each frame.
-				waitFrames = PApplet.constrain(Math.round(pie.frameRate / fps), 1, 100) - 1;
+				// ...Else, report the error in IlumMap size.
+			} else {
+				pie.log.printlg("IlumMap " + ilummap + " is not the same size as parent sprite.");
 			}
-
-			// If it has an IlumMap...
-			if (pie.fileExists(ilummap)) {
-
-				// Load the IlumMap.
-				PImage img = pie.app.loadImage(ilummap);
-
-				// If the IlumMap is the same size as the image...
-				if (img.pixels.length == sprite.pixels.length) {
-
-					// Set hasIlum to true.
-					hasIlum = true;
-
-					// Resize the IlumMap array to the size of the image.
-					IlumMap = new float[img.pixels.length];
-
-					// Record the brightness of each pixel.
-					for (int i = 0; i < img.pixels.length; i++) {
-						IlumMap[i] = (img.pixels[i] & 0xFF) / 255.0f;
-					}
-
-					// ...Else, report the error in IlumMap size.
-				} else {
-					pie.log.printlg("IlumMap " + ilummap + " is not the same size as parent sprite.");
-				}
-			}
-
-			// ...Else, report the file not found.
-		//} else {
-		//	pie.log.printlg("Image " + pie.app.dataPath(colormap) + " not found.");
-		//}
+		}
+		
+		// If lighting is active, generate alpha mask array.
+		//createMask();
 	}
+	
+	/**
+	 * Create the alpha mask used for lighting purposes.
+	 * @param sprite
+	 */
+	/*
+	private void createMask() {
+		mask = new PImage[pixFrames];
+		for (int i = 0; i < pixFrames; i++) {
+			mask[i] = pie.app.createImage(pixWidth, sprite.height, PConstants.ARGB);
+			mask[i].copy(sprite, i * pixWidth, 0, pixWidth, sprite.height, 0, 0, pixWidth, sprite.height);
+			mask[i].loadPixels();
+			for (int k = 0; k < mask[i].pixels.length; k++) {
+				mask[i].pixels[k] = mask[i].pixels[k] & 0xFFFFFF | (mask[i].pixels[k] >> 24) & 0xFF;
+			}
+			mask[i].updatePixels();
+		}
+	}*/
 	
 	/**
 	 * Flip image horizontally.
