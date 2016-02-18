@@ -180,7 +180,7 @@ public class PixelPie {
 		// If assets are loaded, run loop functions.
 		if (loaded && !levelLoading) {
 			collisionDetect();
-			updateScript();
+			//updateScript();
 			updateLevel();			
 			updateDecals();
 			updateObjects();

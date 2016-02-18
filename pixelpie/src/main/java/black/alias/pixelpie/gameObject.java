@@ -3,8 +3,6 @@ package black.alias.pixelpie;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PImage;
-//import processing.core.PConstants;
-//import processing.core.PImage;
 import processing.data.StringDict;
 import processing.event.MouseEvent;
 import black.alias.pixelpie.sprite.Sprite;
@@ -109,30 +107,36 @@ public class GameObject {
 	 * @param SpriteFile
 	 */
 	public void setSprite(String SpriteFile) {
-		if (pie.spr.get(SpriteFile) != null) {
-			visible = true;
-			sprite = SpriteFile;
-			Sprite pix = pie.spr.get(sprite);
-			objWidth = pix.pixWidth;
-			objHeight = pix.sprite.height;
-			objFrames = pix.pixFrames;
-			waitFrames = pix.waitFrames;
-			lightTemp = pie.app.createImage(objWidth, objHeight, PConstants.ARGB);
-		} else {
-			visible = false;
-			sprite = null;
-			objWidth = 0;
-			objHeight = 0;
-			objFrames = 0;
-			waitFrames = 0;
-			pie.log.printlg("Sprite " + SpriteFile + " not found.");
+		if (!SpriteFile.equals(sprite)){
+			if (pie.spr.get(SpriteFile) != null) {			
+				visible = true;
+				sprite = SpriteFile;
+				Sprite pix = pie.spr.get(sprite);
+				if (pie.lighting) {
+					if ((objWidth < pix.pixWidth) || (objHeight < pix.sprite.height)) {
+						lightTemp = pie.app.createImage(PApplet.max(objWidth, pix.pixWidth), PApplet.max(objHeight, pix.sprite.height), PConstants.ARGB);
+					}
+				}			
+				objWidth = pix.pixWidth;
+				objHeight = pix.sprite.height;
+				objFrames = pix.pixFrames;
+				waitFrames = pix.waitFrames;
+			} else {
+				visible = false;
+				sprite = null;
+				objWidth = 0;
+				objHeight = 0;
+				objFrames = 0;
+				waitFrames = 0;
+				pie.log.printlg("Sprite " + SpriteFile + " not found.");
+			}
+			if (!preserveFrame) {
+				currentFrame = 0;
+			}
+			xOffset = PixelPie.getXOffset(origin, objWidth);
+			yOffset = PixelPie.getYOffset(origin, objHeight);
+			refreshBBox();
 		}
-		if (!preserveFrame) {
-			currentFrame = 0;
-		}
-		xOffset = PixelPie.getXOffset(origin, objWidth);
-		yOffset = PixelPie.getYOffset(origin, objHeight);
-		refreshBBox();
 	}
 
 	/**
