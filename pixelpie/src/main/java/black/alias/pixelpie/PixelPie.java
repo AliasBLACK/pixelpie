@@ -38,9 +38,6 @@ public class PixelPie {
 	public StringList depthBuffer;
 	public Script currentScript;
 	
-	// Threaded loader.
-	public levelLoader lvlLoader;
-	
 	// Containers for object instances.
 	public final ArrayList<GameObject> objects;
 	public final ArrayList<Decal> decals;
@@ -111,7 +108,7 @@ public class PixelPie {
 		app.frameRate(fps);
 		
 		// Set PApplet openGL rendering parameters.
-		((PGraphicsOpenGL)app.g).textureSampling(3);
+		if (app.g instanceof PGraphicsOpenGL) ((PGraphicsOpenGL)app.g).textureSampling(3);
 		
 		// Essential Parameters.
 		app.background(0);
@@ -147,10 +144,6 @@ public class PixelPie {
 		// Initiate logger.
 		this.log = new Logger(app, this);
 		
-		// Initiate levelLoader.
-		lvlLoader = new levelLoader(this); 
-		lvlLoader.start();
-		
 		// Initiate containers.
 		objects = new ArrayList<GameObject>();
 		decals = new ArrayList<Decal>();
@@ -180,13 +173,12 @@ public class PixelPie {
 		// If assets are loaded, run loop functions.
 		if (loaded && !levelLoading) {
 			collisionDetect();
-			//updateScript();
+			updateScript();
 			updateLevel();			
 			updateDecals();
 			updateObjects();
 			//updateGraphics();
-			//updateSounds();
-			PApplet.println(app.frameCount);
+			updateSounds();
 		}
 
 		// Else, show loading screen.
@@ -246,14 +238,12 @@ public class PixelPie {
 				// Select object 1.
 				GameObject obj1 = objectArray.get(i);
 
-				// Test if object 1 is flagged as destroyed. Remove it from
-				// list.
+				// Test if object 1 is flagged as destroyed. Remove it from list.
 				if (obj1.destroyed) {
 					objectArray.remove(i);
 					i--;
 
-					// Else, proceed with collision testing if noCollide is
-					// false.
+				// Else, proceed with collision testing if noCollide is false.
 				} else if (!obj1.noCollide) {
 					for (int k = i + 1; k < objectArray.size(); k++) {
 
@@ -980,6 +970,15 @@ public class PixelPie {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Load a new game level.
+	 * @param lvl
+	 */
+	public void loadLevel(String lvl) {
+		loadLevelTarget = lvl;
+		new levelLoader(this).start();
 	}
 	
 	/**

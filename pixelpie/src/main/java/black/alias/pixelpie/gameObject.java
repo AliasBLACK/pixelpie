@@ -113,7 +113,7 @@ public class GameObject {
 				sprite = SpriteFile;
 				Sprite pix = pie.spr.get(sprite);
 				if (pie.lighting) {
-					if ((objWidth < pix.pixWidth) || (objHeight < pix.sprite.height)) {
+					if ((objWidth < pix.pixWidth) || (objHeight < pix.sprite.height) || lightTemp == null) {
 						lightTemp = pie.app.createImage(PApplet.max(objWidth, pix.pixWidth), PApplet.max(objHeight, pix.sprite.height), PConstants.ARGB);
 					}
 				}			
