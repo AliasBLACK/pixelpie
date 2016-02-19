@@ -12,6 +12,11 @@
   		<scope>system</scope>
 		<systemPath>${basedir}/lib/jops.jar</systemPath>
   	</dependency>
+  	<dependency>
+  		<groupId>org.processing</groupId>
+  		<artifactId>core</artifactId>
+  		<version>3.0.1</version>
+  	</dependency>
   </dependencies>
   <parent>
   	<groupId>black.alias</groupId>

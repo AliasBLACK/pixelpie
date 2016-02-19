@@ -10,11 +10,6 @@
   <name>APWidgets Audio Device for PixelPie</name>
   <dependencies>
   	<dependency>
-  		<groupId>apwidgets</groupId>
-  		<artifactId>apwidgets</artifactId>
-  		<version>0.0.1-SNAPSHOT</version>
-  	</dependency>
-  	<dependency>
   		<groupId>black.alias</groupId>
   		<artifactId>pixelpie</artifactId>
   		<version>0.0.1</version>
@@ -23,6 +18,11 @@
   		<groupId>com.google.android</groupId>
   		<artifactId>android</artifactId>
   		<version>4.1.1.4</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.processing</groupId>
+  		<artifactId>core</artifactId>
+  		<version>3.0.1</version>
   	</dependency>
   </dependencies>
 </project>
