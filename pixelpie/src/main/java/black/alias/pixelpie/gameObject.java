@@ -24,14 +24,17 @@ public class GameObject {
 	 * @param pie
 	 */
 	public GameObject(PixelPie pie) {
+		
+		// Grab PixelPie.
+		this.pie = pie;
+		
+		// Set some parameters.
 		visible = false;
 		lockBBox = false;
 		type = "Object";
 		sprite = null;
 		alpha = 255;
-		
-		// Grab PixelPie.
-		this.pie = pie;
+		lightTemp = pie.app.createImage(1, 1, PConstants.ARGB);
 
 		// Add object to collide detect array.
 		pie.objectArray.add(this);
@@ -95,6 +98,10 @@ public class GameObject {
 		parameters = param;
 	}
 
+	/**
+	 * Change origin pt.
+	 * @param Ori
+	 */
 	public void setOrigin(int Ori) {
 		origin = Ori;
 		xOffset = PixelPie.getXOffset(origin, objWidth);
@@ -112,11 +119,6 @@ public class GameObject {
 				visible = true;
 				sprite = SpriteFile;
 				Sprite pix = pie.spr.get(sprite);
-				if (pie.lighting) {
-					if ((objWidth < pix.pixWidth) || (objHeight < pix.sprite.height) || lightTemp == null) {
-						lightTemp = pie.app.createImage(PApplet.max(objWidth, pix.pixWidth), PApplet.max(objHeight, pix.sprite.height), PConstants.ARGB);
-					}
-				}			
 				objWidth = pix.pixWidth;
 				objHeight = pix.sprite.height;
 				objFrames = pix.pixFrames;
@@ -179,10 +181,10 @@ public class GameObject {
 	 */
 	public void draw(int index) {
 		if ( // If it's not on screen, skip draw method.
-				PixelPie.toInt(pie.testOnScreen(x - xOffset, y - yOffset))
-				+ PixelPie.toInt(pie.testOnScreen(x - xOffset + objWidth, y - yOffset))
-				+ PixelPie.toInt(pie.testOnScreen(x - xOffset, y - yOffset + objHeight))
-				+ PixelPie.toInt(pie.testOnScreen(x - xOffset + objWidth, y - yOffset + objHeight)) == 0) {
+				PixelPie.toInt(pie.testOnScreen(x, y))
+				+ PixelPie.toInt(pie.testOnScreen(x + objWidth, y))
+				+ PixelPie.toInt(pie.testOnScreen(x, y + objHeight))
+				+ PixelPie.toInt(pie.testOnScreen(x + objWidth, y + objHeight)) == 0) {
 			return;
 		}
 		
@@ -194,79 +196,12 @@ public class GameObject {
 	 * Render this object to the screen.
 	 */
 	public void render() {
-		
-		// Grab sprite.
-		Sprite spr = pie.spr.get(sprite);
-		
-		// Draw image to screen.
-		int startX = PApplet.max(0, -(x - xOffset - pie.displayX));
-		int startY = PApplet.max(0, -(y - yOffset - pie.displayY));
-		int drawWidth = objWidth - PApplet.max(0, x - xOffset + objWidth - pie.displayX - pie.matrixWidth) - startX;
-		int drawHeight = objHeight - PApplet.max(0, y - yOffset + objHeight - pie.displayY - pie.matrixHeight) - startY;
-		
-		// Draw lighting.
-		if (pie.lighting) {
-			
-			// Apply lighting to the sprite.
-			lightTemp.copy(spr.sprite, currentFrame * objWidth, 0, objWidth, objHeight, 0, 0, objWidth, objHeight);
-			lightTemp.loadPixels();
-			for (int i = startX; i < drawWidth + startX; i++) {
-				for (int k = startY; k < drawHeight + startY; k++) {
-					
-					// If it's a completely transparent pixel, ignore it.
-					if (((lightTemp.pixels[k * objWidth + i] >> 24) & 0xFF) == 0) {
-						continue;
-						
-					// If not, light it.
-					} else {
-						int lightRed = (pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] >> 16) & 0xFF;
-						int lightGreen = (pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] >> 8) & 0xFF;
-						int lightBlue = pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] & 0xFF;
-						if (spr.IlumMap != null) {
-							float factor = (1 - spr.IlumMap[spr.sprite.width * k + (currentFrame * objWidth + i)]);
-							lightRed = Math.round(lightRed * factor);
-							lightGreen = Math.round(lightGreen * factor);
-							lightBlue = Math.round(lightBlue * factor);
-						}
-						int red = (lightTemp.pixels[k * objWidth + i] >> 16) & 0xFF;
-						int green = (lightTemp.pixels[k * objWidth + i] >> 8) & 0xFF;
-						int blue = lightTemp.pixels[k * objWidth + i] & 0xFF;
-						int alpha = (lightTemp.pixels[k * objWidth + i] >> 24) & 0xFF;
-						
-						lightTemp.pixels[k * objWidth + i] = 
-								alpha << 24 |
-								(red * lightRed) 	/ 255 << 16 |
-								(green * lightGreen)/ 255 << 8 |
-								(blue * lightBlue) 	/ 255;
-					}						
-				}
-			}
-			lightTemp.updatePixels();
-			
-			// Draw the lighted sprite onto screen.
-			pie.app.copy(lightTemp, startX, startY, drawWidth, drawHeight,
-					(startX > 0) ? 0 : (x - xOffset - pie.displayX) * pie.pixelSize,
-					(startY > 0) ? 0 : (y - yOffset - pie.displayY) * pie.pixelSize,
-					drawWidth * pie.pixelSize,
-					drawHeight * pie.pixelSize
-					);
-			
-		// Else, if no lighting.
-		} else {
-			pie.app.copy(
-					spr.sprite,
-					startX + (currentFrame * objWidth),
-					startY,
-					drawWidth,
-					drawHeight,
-					(startX > 0) ? 0 : (x - xOffset - pie.displayX) * pie.pixelSize,
-					(startY > 0) ? 0 : (y - yOffset - pie.displayY) * pie.pixelSize,
-					drawWidth * pie.pixelSize,
-					drawHeight * pie.pixelSize
-					);
-		}
+		drawSprite(x - xOffset, y - yOffset, depth, currentFrame, alpha, pie.lighting, sprite);
 	}
 
+	/**
+	 * Calculate movement.
+	 */
 	public void move() {
 		x = Math.round(x + xSpeed);
 		y = Math.round(y + ySpeed);
@@ -330,6 +265,93 @@ public class GameObject {
 				bBoxXOffset = xOffset;
 				bBoxYOffset = yOffset;
 			}
+		}
+	}
+	
+	/**
+	 * Draw a sprite to screen.
+	 * @param x
+	 * @param y
+	 * @param depth
+	 * @param currentFrame
+	 * @param alpha
+	 * @param lighted
+	 * @param sprite
+	 */
+	protected void drawSprite(int x, int y, int depth, int currentFrame, int transparency, boolean lighted, String sprite) {
+		
+		// Grab sprite.
+		Sprite spr = pie.spr.get(sprite);
+
+		// Draw image to screen.
+		int startX = PApplet.max(0, -(x - pie.displayX));
+		int startY = PApplet.max(0, -(y - pie.displayY));
+		int drawWidth = spr.pixWidth - PApplet.max(0, x + spr.pixWidth - pie.displayX - pie.matrixWidth) - startX;
+		int drawHeight = spr.sprite.height - PApplet.max(0, y + spr.sprite.height - pie.displayY - pie.matrixHeight) - startY;
+
+		// Draw lighting.
+		if (lighted) {
+
+			// Apply lighting to the sprite.
+			if (lightTemp.width < spr.pixWidth || lightTemp.height < spr.sprite.height) {
+				lightTemp = pie.app.createImage(PApplet.max(lightTemp.width, spr.pixWidth), PApplet.max(lightTemp.height, spr.sprite.height), PConstants.ARGB);
+			}
+			lightTemp.copy(spr.sprite, currentFrame * spr.pixWidth, 0, spr.pixWidth, spr.sprite.height, 0, 0, spr.pixWidth, spr.sprite.height);
+			lightTemp.loadPixels();
+			for (int i = startX; i < drawWidth + startX; i++) {
+				for (int k = startY; k < drawHeight + startY; k++) {
+
+					// If it's a completely transparent pixel, ignore it.
+					if (((lightTemp.pixels[k * spr.pixWidth + i] >> 24) & 0xFF) == 0) {
+						continue;
+
+					// If not, light it.
+					} else {
+						int lightRed = (pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] >> 16) & 0xFF;
+						int lightGreen = (pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] >> 8) & 0xFF;
+						int lightBlue = pie.lightMap.pixels[(y + k) * pie.roomWidth + (x + i)] & 0xFF;
+						if (spr.IlumMap != null) {
+							float factor = (1 - spr.IlumMap[spr.sprite.width * k + (currentFrame * spr.pixWidth + i)]);
+							lightRed = Math.round((1 - (1 - (lightRed / 255.0f)) * factor) * 255);
+							lightGreen = Math.round((1 - (1 - (lightGreen / 255.0f)) * factor) * 255);	
+							lightBlue = Math.round((1 - (1 - (lightBlue / 255.0f)) * factor) * 255);
+						}
+						int red = (lightTemp.pixels[k * spr.pixWidth + i] >> 16) & 0xFF;
+						int green = (lightTemp.pixels[k * spr.pixWidth + i] >> 8) & 0xFF;
+						int blue = lightTemp.pixels[k * spr.pixWidth + i] & 0xFF;
+						int alpha = (lightTemp.pixels[k * spr.pixWidth + i] >> 24) & 0xFF;
+
+						lightTemp.pixels[k * spr.pixWidth + i] = 
+								alpha << 24 |
+								(red * lightRed) 	/ 255 << 16 |
+								(green * lightGreen)/ 255 << 8 |
+								(blue * lightBlue) 	/ 255;
+					}						
+				}
+			}
+			lightTemp.updatePixels();
+
+			// Draw the lighted sprite onto screen.
+			pie.app.copy(lightTemp, startX, startY, drawWidth, drawHeight,
+					(startX > 0) ? 0 : (x - pie.displayX) * pie.pixelSize,
+					(startY > 0) ? 0 : (y - pie.displayY) * pie.pixelSize,
+					drawWidth * pie.pixelSize,
+					drawHeight * pie.pixelSize
+					);
+
+		// Else, if no lighting.
+		} else {
+			pie.app.copy(
+					spr.sprite,
+					startX + (currentFrame * spr.pixWidth),
+					startY,
+					drawWidth,
+					drawHeight,
+					(startX > 0) ? 0 : (x - pie.displayX) * pie.pixelSize,
+					(startY > 0) ? 0 : (y - pie.displayY) * pie.pixelSize,
+					drawWidth * pie.pixelSize,
+					drawHeight * pie.pixelSize
+					);
 		}
 	}
 }

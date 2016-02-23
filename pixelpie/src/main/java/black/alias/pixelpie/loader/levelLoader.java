@@ -268,7 +268,7 @@ public class levelLoader extends Thread {
 						}
 
 						// If not sprite is specified.
-						if (mySprite.equals("")){
+						if (mySprite.equals("0")){
 
 							// If decal has a GID, create a tile decal.
 							if (object.getInt("gid") != 0) {
@@ -282,10 +282,10 @@ public class levelLoader extends Thread {
 												)
 										);
 
-								// Else, throw error for this decal.
+							// Else, throw error for this decal.
 							} else {pie.log.printlg("Decal has no tile or sprite value attached. Ignoring.");}
 
-							// If decal is a sprite.
+						// If decal is a sprite.
 						} else if (pie.spr.get(mySprite) != null){
 							pie.decals.add(
 									new Decal(
@@ -334,8 +334,8 @@ public class levelLoader extends Thread {
 						gameObject.setHeight ( Math.round(object.getFloat("height")) );
 						gameObject.setType ( objectName.intern() );
 						gameObject.init();
-
-						// Add object to objects array.
+						
+						// Add object to objects container.
 						pie.objects.add(gameObject);
 					}
 				}
@@ -362,6 +362,9 @@ public class levelLoader extends Thread {
 
 		// Reset levelBuffer for current level.
 		generateLevelBuffer();
+		
+		// Release cached tileSet images, we don't need them anymore.
+		pie.tileSetList = null;
 
 		// Set current level name.
 		currentLevelName = levelName;

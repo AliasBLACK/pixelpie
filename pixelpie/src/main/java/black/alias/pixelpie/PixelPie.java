@@ -1,20 +1,18 @@
 package black.alias.pixelpie;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
-
 import processing.core.*;
 import processing.data.StringList;
 import processing.opengl.PGraphicsOpenGL;
+import processing.opengl.PJOGL;
 import black.alias.pixelpie.level.*;
 import black.alias.pixelpie.loader.*;
 import black.alias.pixelpie.sprite.*;
 import black.alias.pixelpie.audio.*;
-import black.alias.pixelpie.audio.levelaudio.EnvAudio;
-import black.alias.pixelpie.audio.levelaudio.GlobalAudio;
-import black.alias.pixelpie.audio.levelaudio.LevelAudio;
+import black.alias.pixelpie.audio.levelaudio.*;
 import black.alias.pixelpie.controls.Controls;
+import black.alias.pixelpie.effect.Effect;
 import black.alias.pixelpie.file.FileManager;
 import black.alias.pixelpie.graphics.*;
 
@@ -32,7 +30,8 @@ public class PixelPie {
 	public int displayX, displayY, roomWidth, roomHeight, matrixWidth, matrixHeight,
 		pixelSize, minScale, maxScale, index;
 	public float frameRate, frameProgress;
-	public boolean displayFPS, loaded, waitThread, lighting, levelLoading, isPaused;
+	public volatile boolean loaded;
+	public boolean displayFPS, waitThread, lighting, levelLoading, isPaused;
 	public int background, black, white;
 	public int[] pixelMatrix;
 	public StringList depthBuffer;
@@ -43,6 +42,7 @@ public class PixelPie {
 	public final ArrayList<Decal> decals;
 	public final ArrayList<Graphics> graphics;
 	public final ArrayList<LevelAudio> sounds;
+	public final ArrayList<Effect> effects;
 	
 	// Containers for permanent assets.
 	public final HashMap<String, Sprite> spr;
@@ -104,14 +104,18 @@ public class PixelPie {
 		
 		// Set desired frameRate, and keep record of it for animation purposes.
 		this.frameRate = fps;
-		app.noStroke();
 		app.frameRate(fps);
 		
 		// Set PApplet openGL rendering parameters.
-		if (app.g instanceof PGraphicsOpenGL) ((PGraphicsOpenGL)app.g).textureSampling(3);
+		if (app.g instanceof PGraphicsOpenGL) {
+			((PGraphicsOpenGL)app.g).textureSampling(3);
+			((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
+		}
 		
 		// Essential Parameters.
+		app.noStroke();
 		app.background(0);
+		app.textSize(32);
 
 		// Set default values of variables.
 		pixelSize = PixelSize;
@@ -149,6 +153,7 @@ public class PixelPie {
 		decals = new ArrayList<Decal>();
 		graphics = new ArrayList<Graphics>();
 		sounds = new ArrayList<LevelAudio>();
+		effects = new ArrayList<Effect>();
 		
 		// Register methods with Processing.
 		app.registerMethod("draw", this);
@@ -166,7 +171,7 @@ public class PixelPie {
 	 * Method called by processing at the end of draw method.
 	 */
 	public void draw() {
-		
+
 		// Erase previous draw.
 		app.background(0);
 
@@ -174,41 +179,47 @@ public class PixelPie {
 		if (loaded && !levelLoading) {
 			collisionDetect();
 			updateScript();
-			updateLevel();			
-			updateDecals();
 			updateObjects();
-			//updateGraphics();
+			updateLevel();	
+			updateDecals();
+			updateEffects();
+			updateGraphics();
 			updateSounds();
 		}
 
 		// Else, show loading screen.
 		else {}
 
-		// Draw depthBuffer to pixelMatrix.
+		// Draw depthBuffer to screen.
 		depthBuffer.sort();
 		for (String str : depthBuffer) {
-			switch(toInt(str.substring(4,5))) {  
+			switch(toInt(str.substring(4,5))) {
 
 			// If entry is a game object.
 			case 0:
 				objects.get(toInt(str.substring(5))).render();
 				break;
 
-			// If entry is a decal.				
+				// If entry is a decal.				
 			case 1:
 				decals.get(toInt(str.substring(5))).render();
 				break;
 
-			// If entry is a graphic.
+				// If entry is a graphic.
 			case 2:
+				graphics.get(toInt(str.substring(5))).render();
+				break;
+
+				// If entry is an effect.
+			case 3:
+				effects.get(toInt(str.substring(5))).render();
 				break;
 			}
 		}
 		depthBuffer.clear();
-		
+
 		// Level loading screen.
 		if (levelLoading) {
-			app.textSize(32);
 			app.fill(black);
 			app.rect(0, 0, app.width, app.height);
 			app.fill(white);
@@ -223,6 +234,149 @@ public class PixelPie {
 			app.textAlign(PConstants.LEFT, PConstants.TOP); 
 			app.fill(white);
 			app.text(app.frameRate, 20, 20);
+		}
+	}
+	
+	/**
+	 * Update method for current Script.
+	 */
+	public void updateScript() {
+		if (scriptRunning()) {
+			currentScript.update();
+		}
+	}
+	
+	/**
+	 * Update all decals.
+	 */
+	private void updateDecals() {
+		for (int i = 0; i < decals.size(); i++) {
+			Decal decal = decals.get(i);
+			if (!isPaused) {
+				decal.animate();
+			}
+			decal.update(i);
+		}
+	}
+	
+	/**
+	 * Update all sprite effects.
+	 */
+	public void updateEffects() {
+		for (int i = 0; i < effects.size(); i++) { 
+
+			// Get object.
+			Effect obj = effects.get(i);
+
+			// If destroyed, remove from list.
+			if (obj.destroyed){
+				effects.remove(i);
+				i--;
+
+			// Else, animate and render.
+			} else {
+				obj.animate();
+				obj.draw(i);
+			}
+		}
+	}
+
+	/**
+	 * Update all the graphics objects.
+	 */
+	public void updateGraphics() {
+		for (int i = 0; i < graphics.size(); i++) {
+			graphics.get(i).draw(i);
+		}
+	}
+	
+	/**
+	 * Update level.
+	 */
+	public void updateLevel() {
+		if (currentLevel != null) {
+			// Process background layers.
+			for (int h = 0; h < currentLevel.backgroundLayers; h++) {
+				app.copy(
+						backgroundBuffer[h],
+						Math.round(displayX * currentLevel.bgScroll[h]),
+						Math.round(displayY * currentLevel.bgScroll[h]),
+						matrixWidth,
+						matrixHeight,
+						0,
+						0,
+						app.width,
+						app.height
+						);
+			}
+			
+			// Process foreground layers.
+			app.copy(
+					levelBuffer,
+					displayX,
+					displayY,
+					matrixWidth,
+					matrixHeight,
+					0,
+					0,
+					app.width,
+					app.height
+					);
+		}
+	}
+
+	/**
+	 * Update all objects.
+	 */
+	void updateObjects() {
+		for (int i = 0; i < objects.size(); i++) {
+
+			// Get object.
+			GameObject obj = objects.get(i);
+
+			// If destroyed, remove from list.
+			if (obj.destroyed) {
+				objects.remove(i);
+				i--;
+
+			// Else, update and render.
+			} else {
+
+				// If there's a velocity, update object position.
+				if ((obj.ySpeed != 0) || (obj.xSpeed != 0)) {
+					if (!isPaused) {
+						obj.move();
+					}
+				}
+				
+				// Update object.
+				if (!isPaused) {
+					obj.update();
+				}
+
+				// Test if object has a sprite.
+				if (obj.sprite != null) {
+
+					// If more than 1 frame, animate.
+					if ((obj.objFrames > 0) && !obj.noAnimate && !isPaused) {
+						obj.animate();
+					}
+
+					// Render sprite if not invisible and on-screen.
+					if (obj.visible) {
+						obj.draw(i);
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Update all sounds.
+	 */
+	private void updateSounds() {
+		for (LevelAudio sound : sounds) {
+			sound.update();
 		}
 	}
 	
@@ -325,23 +479,6 @@ public class PixelPie {
 	 */
 	public boolean testOnLevel(int x, int y) {
 		return ((x >= 0) && (x < roomWidth) && (y >= 0) && (y < roomHeight)) ? true : false;
-	}
-	
-	/**
-	 *  Check if file exists.
-	 * @param filename
-	 * @return
-	 */
-	public boolean fileExists(String filename) {
-		boolean result;
-		
-		if (filename != null && !filename.isEmpty()) {
-			File path = new File(filename);
-			result = path.exists();
-		} else {
-			result = false;
-		}
-		return result;
 	}
 	
 	/**
@@ -459,42 +596,42 @@ public class PixelPie {
 			yOffset = 0;
 			break;
 
-			// Top-center.
+		// Top-center.
 		case 2:
 			yOffset = 0;
 			break;
 
-			// Top-right.
+		// Top-right.
 		case 3:
 			yOffset = 0;
 			break;
 
-			// Center-left.
+		// Center-left.
 		case 4:
 			yOffset = objHeight / 2;
 			break;
 
-			// Center.
+		// Center.
 		case 5:
 			yOffset = objHeight / 2;
 			break;
 
-			// Center-right.
+		// Center-right.
 		case 6:
 			yOffset = objHeight / 2;
 			break;
 
-			// Bottom-left.
+		// Bottom-left.
 		case 7:
 			yOffset = objHeight;
 			break;
 
-			// Bottom-center.
+		// Bottom-center.
 		case 8:
 			yOffset = objHeight;
 			break;
 
-			// Bottom-right.
+		// Bottom-right.
 		case 9:
 			yOffset = objHeight;
 			break;
@@ -596,8 +733,7 @@ public class PixelPie {
 	 * @return
 	 */
 	public static boolean objCollision(GameObject obj1, GameObject obj2) {
-		return (toInt(objHorzCollision(obj1, obj2)) + toInt(objVertCollision(obj1, obj2)) == 2) ? true
-				: false;
+		return (toInt(objHorzCollision(obj1, obj2)) + toInt(objVertCollision(obj1, obj2)) == 2) ? true : false;
 	}
 
 	/**
@@ -768,15 +904,6 @@ public class PixelPie {
 		}
 		return result;
 	}
-	
-	/**
-	 * Update method for current Script.
-	 */
-	public void updateScript() {
-		if (scriptRunning()) {
-			currentScript.update();
-		}
-	}
 
 	/**
 	 * Grab frame number from XML level data.
@@ -837,19 +964,6 @@ public class PixelPie {
 		String result = prop.get(index);
 		return (result == null) ? "0" : result;
 	}
-	
-	/**
-	 * Update all decals.
-	 */
-	private void updateDecals() {
-		for (int i = 0; i < decals.size(); i++) {
-			Decal decal = decals.get(i);
-			if (!isPaused) {
-				decal.animate();
-			}
-			decal.update(i);
-		}
-	}
 
 	/**
 	 * Get object reference.
@@ -881,96 +995,6 @@ public class PixelPie {
 		graphics.get(graphics.size() - 1).index = graphics.size() - 1;
 		return graphics.get(graphics.size() - 1);
 	}
-
-	/**
-	 * Update all the graphics objects.
-	 */
-	public void updateGraphics() {
-		for (Graphics graphic : graphics) {
-			graphic.draw();
-		}
-	}
-	
-	/**
-	 * Update level.
-	 */
-	public void updateLevel() {
-		if (currentLevel != null) {
-			// Process background layers.
-			for (int h = 0; h < currentLevel.backgroundLayers; h++) {
-				app.copy(
-						backgroundBuffer[h],
-						Math.round(displayX * currentLevel.bgScroll[h]),
-						Math.round(displayY * currentLevel.bgScroll[h]),
-						matrixWidth,
-						matrixHeight,
-						0,
-						0,
-						app.width,
-						app.height
-						);
-			}
-			
-			// Process foreground layers.
-			app.copy(
-					levelBuffer,
-					displayX,
-					displayY,
-					matrixWidth,
-					matrixHeight,
-					0,
-					0,
-					app.width,
-					app.height
-					);
-		}
-	}
-
-	/**
-	 * Update all objects.
-	 */
-	void updateObjects() {
-		for (int i = 0; i < objects.size(); i++) {
-
-			// Get object.
-			GameObject obj = objects.get(i);
-
-			// If destroyed, remove from list.
-			if (obj.destroyed) {
-				objects.remove(i);
-				i--;
-
-			// Else, update and render.
-			} else {
-
-				// If there's a velocity, update object position.
-				if ((obj.ySpeed != 0) || (obj.xSpeed != 0)) {
-					if (!isPaused) {
-						obj.move();
-					}
-				}
-				
-				// Update object.
-				if (!isPaused) {
-					obj.update();
-				}
-
-				// Test if object has a sprite.
-				if (obj.sprite != null) {
-
-					// If more than 1 frame, animate.
-					if ((obj.objFrames > 0) && !obj.noAnimate && !isPaused) {
-						obj.animate();
-					}
-
-					// Render sprite if not invisible and on-screen.
-					if (obj.visible) {
-						obj.draw(i);
-					}
-				}
-			}
-		}
-	}
 	
 	/**
 	 * Load a new game level.
@@ -988,15 +1012,6 @@ public class PixelPie {
 	 */
 	public static int toInt(String str) {
 		return Integer.parseInt(str);
-	}
-	
-	/**
-	 * Update all sounds.
-	 */
-	public void updateSounds() {
-		for (LevelAudio sound : sounds) {
-			sound.update();
-		}
 	}
 
 	/**

@@ -51,6 +51,29 @@ public class dataLoader extends Thread{
 							)
 					);
 		}
+		
+		// Load Effects.json
+		dataList = pie.app.loadStrings("Effects/Effects.json");
+		dataString = "";
+		for (int i = 0; i < dataList.length; i++) {
+			dataString += dataList[i];
+		}
+		data = JSONArray.parse(dataString);
+		for (int i = 0; i < data.size(); i++) {    
+			JSONObject sprite = data.getJSONObject(i); 
+			pie.spr.put(
+					sprite.getString("Name"),
+					new Sprite(
+							sprite.getInt("Frames"),
+							sprite.getInt("FPS"),
+							PixelPie.toBoolean(sprite.getInt("FlipX")),
+							PixelPie.toBoolean(sprite.getInt("FlipY")),
+							sprite.getString("Sprite"),
+							sprite.getString("Bumpmap"),
+							pie
+							)
+					);
+		}
 
 		// Load Levels.json
 		dataList = pie.app.loadStrings("Levels/Levels.json");

@@ -16,8 +16,8 @@ public class Controls {
 		this.pie = pie;
 		
 		// Register methods.
-		//pie.app.registerMethod("mouseEvent", this);
-		//pie.app.registerMethod("keyEvent", this);
+		pie.app.registerMethod("mouseEvent", this);
+		pie.app.registerMethod("keyEvent", this);
 	}
 	
 	/**

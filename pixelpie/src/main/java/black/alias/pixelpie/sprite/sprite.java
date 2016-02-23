@@ -10,7 +10,6 @@ public class Sprite {
 	public int pixFrames, pixWidth, waitFrames, currentFrame, currentWait;
 	public boolean hasIlum;
 	public PImage sprite, IlumSprite;
-	//public PImage[] mask;
 	public float[] IlumMap;
 	final PixelPie pie;
 
@@ -60,52 +59,39 @@ public class Sprite {
 		}
 
 		// If it has an IlumMap...
-		if (pie.fileExists(ilummap)) {
+		if ((ilummap != null) && !ilummap.isEmpty()) {
 
 			// Load the IlumMap.
 			IlumSprite = pie.app.loadImage(ilummap);
+			
+			// Check if the IlumMap is real or a hoax.
+			if (IlumSprite != null) {
 
-			// If the IlumMap is the same size as the image...
-			if (IlumSprite.pixels.length == sprite.pixels.length) {
+				// If the IlumMap is the same size as the image...
+				if (IlumSprite.pixels.length == sprite.pixels.length) {
 
-				// Set hasIlum to true.
-				hasIlum = true;
+					// Set hasIlum to true.
+					hasIlum = true;
 
-				// Resize the IlumMap array to the size of the image.
-				IlumMap = new float[IlumSprite.pixels.length];
+					// Resize the IlumMap array to the size of the image.
+					IlumMap = new float[IlumSprite.pixels.length];
 
-				// Record the brightness of each pixel.
-				for (int i = 0; i < IlumSprite.pixels.length; i++) {
-					IlumMap[i] = (IlumSprite.pixels[i] & 0xFF) / 255.0f;
+					// Record the brightness of each pixel.
+					for (int i = 0; i < IlumSprite.pixels.length; i++) {
+						IlumMap[i] = (IlumSprite.pixels[i] & 0xFF) / 255.0f;
+					}
+
+					// ...Else, report the error in IlumMap size.
+				} else {
+					pie.log.printlg("IlumMap " + ilummap + " is not the same size as parent sprite.");
 				}
-
-				// ...Else, report the error in IlumMap size.
+				
+			// ...Else, report the file missing.
 			} else {
-				pie.log.printlg("IlumMap " + ilummap + " is not the same size as parent sprite.");
+				pie.log.printlg("IlumMap " + ilummap + " does not exist.");
 			}
 		}
-		
-		// If lighting is active, generate alpha mask array.
-		//createMask();
 	}
-	
-	/**
-	 * Create the alpha mask used for lighting purposes.
-	 * @param sprite
-	 */
-	/*
-	private void createMask() {
-		mask = new PImage[pixFrames];
-		for (int i = 0; i < pixFrames; i++) {
-			mask[i] = pie.app.createImage(pixWidth, sprite.height, PConstants.ARGB);
-			mask[i].copy(sprite, i * pixWidth, 0, pixWidth, sprite.height, 0, 0, pixWidth, sprite.height);
-			mask[i].loadPixels();
-			for (int k = 0; k < mask[i].pixels.length; k++) {
-				mask[i].pixels[k] = mask[i].pixels[k] & 0xFFFFFF | (mask[i].pixels[k] >> 24) & 0xFF;
-			}
-			mask[i].updatePixels();
-		}
-	}*/
 	
 	/**
 	 * Flip image horizontally.

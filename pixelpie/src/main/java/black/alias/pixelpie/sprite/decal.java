@@ -28,7 +28,7 @@ public class Decal {
 	 * @param GID
 	 */
 	public Decal(int PosX, int PosY, int Depth, int GID, PixelPie pie) {
-		this(PosX, PosY, Depth, GID, 0, true, null, pie);
+		this(PosX, PosY, Depth, GID, 7, true, null, pie);
 	}
 
 	/**
@@ -63,7 +63,7 @@ public class Decal {
 		gid = GID;
 		origin = Origin;    
 		isTile = IsTile;
-		this.pie = pie;		
+		this.pie = pie;
 
 		// If it's a sprite...
 		if (!isTile) {
@@ -74,13 +74,6 @@ public class Decal {
 			waitFrames = pie.spr.get(Sprite).waitFrames;
 			IlumSprite = pie.spr.get(Sprite).IlumSprite;
 
-			if (origin != 0) {
-				xOffset = PixelPie.getXOffset(origin, objWidth);
-				yOffset = PixelPie.getYOffset(origin, objHeight);
-			} else {
-				xOffset = yOffset = 0;
-			}
-
 		// If it's a tile...
 		} else {
 			
@@ -90,15 +83,15 @@ public class Decal {
 			objHeight = tileSet.tileHeight;
 			
 			// Defaults
-			yOffset = xOffset = waitFrames = objFrames = 0;
+			waitFrames = objFrames = 0;
 			IlumSprite = null;
 			
 			// Cache image of tile.
 			sprite = new PImage(objWidth, objHeight, PConstants.ARGB);
 			sprite.copy(
 					tileSet.tileSet,
-					(gid % tileSet.tileColumns) * tileSet.tileWidth,
-					(gid / tileSet.tileColumns) * tileSet.tileHeight,
+					((gid - tileSet.firstGID) % tileSet.tileColumns) * tileSet.tileWidth,
+					((gid - tileSet.firstGID) / tileSet.tileColumns) * tileSet.tileHeight,
 					objWidth,
 					objHeight,
 					0,
@@ -107,6 +100,10 @@ public class Decal {
 					objHeight
 					);
 		}
+		
+		// Get offsets.
+		xOffset = PixelPie.getXOffset(origin, objWidth);
+		yOffset = PixelPie.getYOffset(origin, objHeight);
 	}
 	
 	/**
@@ -118,7 +115,7 @@ public class Decal {
 		PImage alpha = sprite.get();
 		alpha.loadPixels();
 		for (int i = 0; i < alpha.pixels.length; i ++) {
-			alpha.pixels[i] = alpha.pixels[i] & 0xFFFFFF | (alpha.pixels[i] >> 24) & 0xFF;
+			alpha.pixels[i] = ((alpha.pixels[i] >> 8) & 0xFFFFFF) << 8 | (alpha.pixels[i] >> 24) & 0xFF;
 		}
 		alpha.updatePixels();
 		
@@ -192,8 +189,8 @@ public class Decal {
 				0,
 				objWidth,
 				objHeight,
-				(x - pie.displayX) * pie.pixelSize,
-				(y - pie.displayY) * pie.pixelSize,
+				(x - xOffset - pie.displayX) * pie.pixelSize,
+				(y - yOffset - pie.displayY) * pie.pixelSize,
 				objWidth * pie.pixelSize,
 				objHeight * pie.pixelSize
 				);
