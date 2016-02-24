@@ -23,7 +23,6 @@ import black.alias.pixelpie.sprite.Decal;
  */
 public class levelLoader extends Thread {
 	final PixelPie pie;
-	String currentLevelName;
 	
 	public levelLoader(PixelPie pie) {
 		this.pie = pie;
@@ -72,7 +71,7 @@ public class levelLoader extends Thread {
 
 		// Set the lightMap to this map's size.
 		pie.loadingText = "Generating Lightmap";
-		if ((pie.lighting) && !levelName.equals(currentLevelName)) {
+		if ((pie.lighting) && !levelName.equals(pie.currentLevelName)) {
 			pie.lightMap = pie.app.createGraphics(pie.roomWidth, pie.roomHeight);
 			pie.lightMap.beginDraw();
 			pie.lightMap.background(pie.levelBrightness);
@@ -80,7 +79,7 @@ public class levelLoader extends Thread {
 		}
 
 		// Load tileSets.
-		if (!levelName.equals(currentLevelName)) {
+		if (!levelName.equals(pie.currentLevelName)) {
 			pie.loadingText = "Retrieving Tilesets";
 
 			// Resize tileSetList according to tileSet count.
@@ -134,7 +133,7 @@ public class levelLoader extends Thread {
 				String[] nameParts = PApplet.split(objectName, " ");
 
 				// If light.
-				if ((nameParts[0].equals("(light)")) && pie.lighting && !levelName.equals(currentLevelName)) {
+				if ((nameParts[0].equals("(light)")) && pie.lighting && !levelName.equals(pie.currentLevelName)) {
 
 					// Process each object in light layer.
 					for (XML object : objectType.getChildren("object")) {
@@ -346,7 +345,7 @@ public class levelLoader extends Thread {
 		pie.currentLevel = level;
 
 		// If lighting is turned on and this is a new level.
-		if ((pie.lighting) && !levelName.equals(currentLevelName)) {
+		if ((pie.lighting) && !levelName.equals(pie.currentLevelName)) {
 
 			// Finalize the light map.
 			pie.loadingText = "Finalizing Lightmap";
@@ -367,13 +366,14 @@ public class levelLoader extends Thread {
 		pie.tileSetList = null;
 
 		// Set current level name.
-		currentLevelName = levelName;
+		pie.currentLevelName = levelName;
 
 		// Force garbage collection.
+		pie.loadingText = "Clearing Garbage";
 		System.gc();
 
 		// Set loading flag to false (remove loading screen).
-		pie.levelLoading = false;
+		pie.levelLoading = false;;
 		pie.loadLevelTarget = "";
 	}
 	

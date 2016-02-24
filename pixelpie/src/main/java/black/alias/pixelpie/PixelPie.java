@@ -5,7 +5,6 @@ import java.util.HashMap;
 import processing.core.*;
 import processing.data.StringList;
 import processing.opengl.PGraphicsOpenGL;
-import processing.opengl.PJOGL;
 import black.alias.pixelpie.level.*;
 import black.alias.pixelpie.loader.*;
 import black.alias.pixelpie.sprite.*;
@@ -28,7 +27,7 @@ public class PixelPie {
 	public final Logger log;
 	public final FileManager FileSystem;
 	public int displayX, displayY, roomWidth, roomHeight, matrixWidth, matrixHeight,
-		pixelSize, minScale, maxScale, index;
+		pixelSize, index;
 	public float frameRate, frameProgress;
 	public volatile boolean loaded;
 	public boolean displayFPS, waitThread, lighting, levelLoading, isPaused;
@@ -60,6 +59,7 @@ public class PixelPie {
 	public PImage levelBuffer;
 	public PImage[] backgroundBuffer;
 	public PGraphics lightMap;
+	public String currentLevelName;
 	
 	/**
 	 * Initialize PixelPie.
@@ -106,11 +106,8 @@ public class PixelPie {
 		this.frameRate = fps;
 		app.frameRate(fps);
 		
-		// Set PApplet openGL rendering parameters.
-		if (app.g instanceof PGraphicsOpenGL) {
-			((PGraphicsOpenGL)app.g).textureSampling(3);
-			((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
-		}
+		// Set Renderer specific settings.
+		if (app.g instanceof PGraphicsOpenGL) ((PGraphicsOpenGL)app.g).textureSampling(3);
 		
 		// Essential Parameters.
 		app.noStroke();
@@ -122,19 +119,15 @@ public class PixelPie {
 		black = app.color(0, 0, 0);
 		white = app.color(255, 255, 255);
 		background = black;                 // Background color.
-		maxScale = 20;                      // Maximum pixel scale.
 		roomWidth = 1000;                   // Default width of game level.
 		roomHeight = 1000;                  // Default height of game level.
-
-		// Set floor for pixelSize, also pixel size for UI.
-		minScale = pixelSize;
 		
 		// Initiate controls.
 		new Controls(this);
 
 		// Initiate pixelMatrix.
-		matrixWidth = Math.round(app.width / pixelSize);
-		matrixHeight = Math.round(app.height / pixelSize);
+		matrixWidth = app.width / pixelSize;
+		matrixHeight = app.height / pixelSize;
 
 		// Initiate depthBuffers.
 		depthBuffer = new StringList();
