@@ -3,6 +3,7 @@ package black.alias.pixelpie.graphics;
 import black.alias.pixelpie.PixelPie;
 import processing.core.PApplet;
 import processing.core.PGraphics;
+import processing.opengl.PGraphicsOpenGL;
 
 public class Graphics {
 	public int x, y, depth, index;
@@ -46,16 +47,30 @@ public class Graphics {
 		int drawWidth = graphic.width - PApplet.max(0, x + graphic.width - pie.displayX - pie.matrixWidth) - startX;
 		int drawHeight = graphic.height - PApplet.max(0, y + graphic.height - pie.displayY - pie.matrixHeight) - startY;
 		
-		pie.app.copy(
-				graphic,
-				startX,
-				startY,
-				drawWidth,
-				drawHeight,
-				(startX > 0) ? 0 : (x - pie.displayX) * pie.pixelSize,
-				(startY > 0) ? 0 : (y - pie.displayY) * pie.pixelSize,
-				drawWidth * pie.pixelSize,
-				drawHeight * pie.pixelSize
-				);
+		if (pie.app.g instanceof PGraphicsOpenGL) {		
+			pie.app.copy(
+					graphic,
+					startX,
+					startY,
+					drawWidth,
+					drawHeight,
+					(startX > 0) ? 0 : (x - pie.displayX) * pie.pixelSize,
+					(startY > 0) ? 0 : (y - pie.displayY) * pie.pixelSize,
+					drawWidth * pie.pixelSize,
+					drawHeight * pie.pixelSize
+					);
+		} else {
+			pie.app.copy(
+					graphic.get(),
+					startX,
+					startY,
+					drawWidth,
+					drawHeight,
+					(startX > 0) ? 0 : (x - pie.displayX) * pie.pixelSize,
+					(startY > 0) ? 0 : (y - pie.displayY) * pie.pixelSize,
+					drawWidth * pie.pixelSize,
+					drawHeight * pie.pixelSize
+					);
+		}
 	}
 }
