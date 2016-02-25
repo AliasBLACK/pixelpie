@@ -12,7 +12,8 @@ import black.alias.pixelpie.level.TileSet;
  *
  */
 public class Decal {
-	public final PImage sprite;
+	public PImage sprite;
+	boolean requiresBuffer;
 	final int x, y, origin, xOffset, yOffset, depth, gid, objWidth, objHeight;
 	final int objFrames, waitFrames;
 	final PixelPie pie;
@@ -104,6 +105,35 @@ public class Decal {
 		// Get offsets.
 		xOffset = PixelPie.getXOffset(origin, objWidth);
 		yOffset = PixelPie.getYOffset(origin, objHeight);
+		
+		// Check if decal is semi-transparent.
+		// If yes, this decal will have it's background buffered later.
+		sprite.loadPixels();
+		requiresBuffer = false;
+		for (int i = 0; i < sprite.pixels.length; i++) {
+			if (((sprite.pixels[i] >> 24) & 0xFF) == 0 || ((sprite.pixels[i] >> 24) & 0xFF) == 255) {
+				continue;
+			} else {
+				requiresBuffer = true;
+				break;
+			}
+		}
+	}
+	
+	/**
+	 * Bake background under decal if it's semi-transparent to save processing time.
+	 */
+	public void alphaBuffer() {
+		if (!requiresBuffer) {
+			return;
+		} else {
+			PImage temp = pie.app.createImage(sprite.width, objHeight, PConstants.ARGB);
+			for (int i = 0; i <= objFrames; i++) {
+				temp.copy(pie.levelBuffer, x, y, objWidth, objHeight, i * objWidth, 0, objWidth, objHeight);
+			}
+			temp.blend(sprite, 0, 0, sprite.width, objHeight, 0, 0, sprite.width, objHeight, PConstants.BLEND);
+			sprite = temp;
+		}
 	}
 	
 	/**
@@ -137,11 +167,11 @@ public class Decal {
 			IlumSprite = null;		// We don't need this anymore, free resources.
 		}
 		
-		// Apply alpha mask to light map.
-		lightMapCopy.mask(alpha);
-		
 		// Burn light map onto sprite.
 		sprite.blend(lightMapCopy, 0, 0, sprite.width, sprite.height, 0, 0, sprite.width, sprite.height, PConstants.MULTIPLY);
+		
+		// Re-apply the original alpha onto the lighted sprite.
+		sprite.mask(alpha);
 	}
 
 	/**

@@ -362,6 +362,11 @@ public class levelLoader extends Thread {
 		// Reset levelBuffer for current level.
 		generateLevelBuffer();
 		
+		// Buffer decals that are semi-transparent with the levelBuffer.
+		for (Decal decal : pie.decals) {
+			decal.alphaBuffer();
+		}
+		
 		// Release cached tileSet images, we don't need them anymore.
 		pie.tileSetList = null;
 
@@ -369,7 +374,6 @@ public class levelLoader extends Thread {
 		pie.currentLevelName = levelName;
 
 		// Force garbage collection.
-		pie.loadingText = "Clearing Garbage";
 		System.gc();
 
 		// Set loading flag to false (remove loading screen).

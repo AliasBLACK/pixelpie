@@ -68,7 +68,7 @@ public class PixelPie {
 	 * @param minim
 	 */
 	public PixelPie(PApplet app, PixelOven oven) {
-		this(app, oven, 2, 30.0f);
+		this(app, oven, 2, 60.0f);
 	}
 	
 	/**
@@ -88,7 +88,7 @@ public class PixelPie {
 	 * @param PixelSize
 	 */
 	public PixelPie(PApplet app, PixelOven oven, int PixelSize) {
-		this(app, oven, PixelSize, 30.0f);
+		this(app, oven, PixelSize, 60.0f);
 	}
 	
 	/**
@@ -105,7 +105,7 @@ public class PixelPie {
 		
 		// Set desired frameRate, and keep record of it for animation purposes.
 		this.frameRate = fps;
-		app.frameRate(fps);
+		if (fps != 60) {app.frameRate(Math.round(fps));}
 		
 		// Set Renderer specific settings.
 		if (app.g instanceof PGraphicsOpenGL) ((PGraphicsOpenGL)app.g).textureSampling(3);
