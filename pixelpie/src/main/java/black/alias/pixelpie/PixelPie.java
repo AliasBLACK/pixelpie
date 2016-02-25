@@ -6,6 +6,7 @@ import java.util.HashMap;
 import processing.core.*;
 import processing.data.StringList;
 import processing.opengl.PGraphicsOpenGL;
+import processing.opengl.PJOGL;
 import black.alias.pixelpie.level.*;
 import black.alias.pixelpie.loader.*;
 import black.alias.pixelpie.sprite.*;
@@ -38,6 +39,7 @@ public class PixelPie {
 	public Script currentScript;
 	
 	// Containers for object instances.
+	// These are temporary objects that are cleared and reloaded every level.
 	public final ArrayList<GameObject> objects;
 	public final ArrayList<Decal> decals;
 	public final ArrayList<Graphics> graphics;
@@ -45,6 +47,7 @@ public class PixelPie {
 	public final ArrayList<Effect> effects;
 	
 	// Containers for permanent assets.
+	// These are all loaded into memory at the start of the game, and never released.
 	public final HashMap<String, Sprite> spr;
 	public final HashMap<String, Level> lvl;
 
@@ -103,12 +106,18 @@ public class PixelPie {
 		// Keep reference to PApplet.
 		this.app = app;
 		
-		// Set desired frameRate, and keep record of it for animation purposes.
+		// Set desired frameRate, and keep record of it in PixelPie for animation purposes.
 		this.frameRate = fps;
-		if (fps != 60) {app.frameRate(Math.round(fps));}
 		
-		// Set Renderer specific settings.
-		if (app.g instanceof PGraphicsOpenGL) ((PGraphicsOpenGL)app.g).textureSampling(3);
+		// Set renderer-specific settings.
+		// FrameRate is broken right now, you can't set it to anything other than 60.0 FPS in P2D.
+		if (app.g instanceof PGraphicsOpenGL) {
+			((PGraphicsOpenGL)app.g).textureSampling(3);
+			((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
+			app.frameRate(70);
+		} else {
+			app.frameRate(fps);
+		}		
 		
 		// Essential Parameters.
 		app.noStroke();
@@ -213,6 +222,7 @@ public class PixelPie {
 		depthBuffer.clear();
 
 		// Level loading screen.
+		// Temporary. Should be replaced eventually by either Nifty or an actual UI system.
 		if (levelLoading) {
 			app.fill(black);
 			app.rect(0, 0, app.width, app.height);
@@ -224,6 +234,7 @@ public class PixelPie {
 		}
 
 		// Show FPS
+		// Also temporary. See above comment.
 		if (displayFPS) {
 			app.textAlign(PConstants.LEFT, PConstants.TOP); 
 			app.fill(white);
@@ -232,7 +243,7 @@ public class PixelPie {
 	}
 	
 	/**
-	 * Update method for current Script.
+	 * Update all scripted sequences.
 	 */
 	public void updateScript() {
 		if (scriptRunning()) {
