@@ -10,12 +10,17 @@ import processing.opengl.PJOGL;
 import black.alias.pixelpie.level.*;
 import black.alias.pixelpie.loader.*;
 import black.alias.pixelpie.sprite.*;
+import black.alias.pixelpie.ui.render.*;
+import black.alias.pixelpie.ui.uiHelper;
+import black.alias.pixelpie.ui.input.*;
 import black.alias.pixelpie.audio.*;
 import black.alias.pixelpie.audio.levelaudio.*;
 import black.alias.pixelpie.controls.Controls;
 import black.alias.pixelpie.effect.Effect;
 import black.alias.pixelpie.file.FileManager;
 import black.alias.pixelpie.graphics.*;
+import de.lessvoid.nifty.Nifty;
+import de.lessvoid.nifty.spi.time.impl.FastTimeProvider;
 
 /**
  * The main PixelPie class.
@@ -65,6 +70,10 @@ public class PixelPie {
 	public PGraphics lightMap;
 	public String currentLevelName;
 	
+	// Nifty GUI.
+	public final Nifty nifty;
+	public final uiHelper ui;
+	
 	/**
 	 * Initialize PixelPie.
 	 * @param app
@@ -108,16 +117,13 @@ public class PixelPie {
 		
 		// Set desired frameRate, and keep record of it in PixelPie for animation purposes.
 		this.frameRate = fps;
+		app.frameRate(fps);
 		
 		// Set renderer-specific settings.
-		// FrameRate is broken right now, you can't set it to anything other than 60.0 FPS in P2D.
 		if (app.g instanceof PGraphicsOpenGL) {
 			((PGraphicsOpenGL)app.g).textureSampling(3);
 			((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
-			app.frameRate(70);
-		} else {
-			app.frameRate(fps);
-		}		
+		}
 		
 		// Essential Parameters.
 		app.noStroke();
@@ -148,6 +154,17 @@ public class PixelPie {
 		// Grab reference to FileManager.
 		this.FileSystem = oven.getManager();
 		
+		// Initiate Nifty.
+		nifty = new Nifty(
+				new RenderDeviceProcessing(app, pixelSize),
+				oven.getNiftyAudio(),
+				new InputSystemProcessing(app, pixelSize),
+				new FastTimeProvider()
+				);
+		
+		// Initiate UI Helper.
+		ui = new uiHelper(nifty);
+		
 		// Initiate logger.
 		this.log = new Logger(app, this);
 		
@@ -159,7 +176,7 @@ public class PixelPie {
 		effects = new ArrayList<Effect>();
 		
 		// Register methods with Processing.
-		app.registerMethod("draw", this);
+		app.registerMethod("pre", this);
 		
 		// Create asset holders.
 		spr = new HashMap<String, Sprite>();
@@ -171,9 +188,9 @@ public class PixelPie {
 	}
 	
 	/**
-	 * Method called by processing at the end of draw method.
+	 * Method called by processing at the start of draw method.
 	 */
-	public void draw() {
+	public void pre() {
 
 		// Erase previous draw.
 		app.background(0);
@@ -220,21 +237,12 @@ public class PixelPie {
 			}
 		}
 		depthBuffer.clear();
-
-		// Level loading screen.
-		// Temporary. Should be replaced eventually by either Nifty or an actual UI system.
-		if (levelLoading) {
-			app.fill(black);
-			app.rect(0, 0, app.width, app.height);
-			app.fill(white);
-			app.textAlign(PConstants.CENTER, PConstants.BOTTOM);
-			app.text("Loading...", app.width/2, app.height/2 + 2);
-			app.textAlign(PConstants.CENTER, PConstants.TOP);
-			app.text(loadingText, app.width/2, app.height/2 - 2);
-		}
-
+		
+		// Update Nifty GUI.
+		nifty.update();
+		nifty.render(false);
+		
 		// Show FPS
-		// Also temporary. See above comment.
 		if (displayFPS) {
 			app.textAlign(PConstants.LEFT, PConstants.TOP); 
 			app.fill(white);

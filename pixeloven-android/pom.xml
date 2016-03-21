@@ -23,6 +23,8 @@
   		<groupId>org.processing</groupId>
   		<artifactId>core</artifactId>
   		<version>3.0.1</version>
+  		<scope>system</scope>
+  		<systemPath>${project.basedir}/lib/android-core.jar</systemPath>
   	</dependency>
   </dependencies>
 </project>

@@ -15,5 +15,4 @@ public class AudioDeviceMinim implements AudioDevice {
 	public AudioFile createSound(String filename) {
 		return new AudioFileMinim(minim, filename);
 	}
-
 }

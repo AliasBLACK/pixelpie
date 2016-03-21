@@ -79,45 +79,43 @@ public class levelLoader extends Thread {
 		}
 
 		// Load tileSets.
-		if (!levelName.equals(pie.currentLevelName)) {
-			pie.loadingText = "Retrieving Tilesets";
+		pie.loadingText = "Retrieving Tilesets";
 
-			// Resize tileSetList according to tileSet count.
-			pie.tileSetList = new TileSet[ level.tileSets.length ];
+		// Resize tileSetList according to tileSet count.
+		pie.tileSetList = new TileSet[ level.tileSets.length ];
 
-			// Empty tileSetRef.
-			pie.tileSetRef = "";
+		// Empty tileSetRef.
+		pie.tileSetRef = "";
 
-			for (int i = 0; i < level.tileSets.length; i++) {
+		for (int i = 0; i < level.tileSets.length; i++) {
 
-				// Load each tileSet.
-				XML data = level.tileSets[i];
+			// Load each tileSet.
+			XML data = level.tileSets[i];
 
-				// Load tileSet image info.
-				XML image = data.getChild("image");
+			// Load tileSet image info.
+			XML image = data.getChild("image");
 
-				// Process tileSet filename.
-				String[] nameParts = PApplet.split(image.getString("source"), "/");
+			// Process tileSet filename.
+			String[] nameParts = PApplet.split(image.getString("source"), "/");
 
-				// Get tile count.
-				int tileColumns = image.getInt("width") / level.tileWidth;
-				int tileRows = image.getInt("height") / level.tileHeight;
+			// Get tile count.
+			int tileColumns = image.getInt("width") / level.tileWidth;
+			int tileRows = image.getInt("height") / level.tileHeight;
 
-				// Create new tileSet.
-				pie.tileSetList[i] = new TileSet(
-						tileRows,										// Tile Rows.
-						tileColumns,									// Tile Columns.
-						level.tileWidth,								// Tile Width.
-						level.tileHeight,								// Tile Height.
-						data.getInt("firstgid"),						// First GID of tile set.
-						"Tilesets/" + nameParts[nameParts.length - 1],	// Extract filename of tile set.
-						pie												// Reference to PixelPie.
-						);
+			// Create new tileSet.
+			pie.tileSetList[i] = new TileSet(
+					tileRows,										// Tile Rows.
+					tileColumns,									// Tile Columns.
+					level.tileWidth,								// Tile Width.
+					level.tileHeight,								// Tile Height.
+					data.getInt("firstgid"),						// First GID of tile set.
+					"Tilesets/" + nameParts[nameParts.length - 1],	// Extract filename of tile set.
+					pie												// Reference to PixelPie.
+					);
 
-				// Append to tileRef.
-				for (int k = 0; k < tileRows * tileColumns; k++){
-					pie.tileSetRef += PApplet.nf(i,2);
-				}
+			// Append to tileRef.
+			for (int k = 0; k < tileRows * tileColumns; k++){
+				pie.tileSetRef += PApplet.nf(i,2);
 			}
 		}
 
@@ -300,12 +298,12 @@ public class levelLoader extends Thread {
 					}
 				}                
 
-				// Else, create contained objects as gameObjects.
+			// Else, create contained objects as gameObjects.
 			} else {    
 				XML[] objects = objectType.getChildren("object");
 				for (XML object : objects) {
 
-					// Create temp object using Java reflection.
+					// Create temporary object using Java reflection.
 					Object obj = null;
 					String ClassName = pie.app.getClass().getName() + "$" + objectName;
 					try {obj = Class.forName(ClassName).getDeclaredConstructors()[0].newInstance(pie.app);}
@@ -344,23 +342,25 @@ public class levelLoader extends Thread {
 		// Set current level.
 		pie.currentLevel = level;
 
-		// If lighting is turned on and this is a new level.
-		if ((pie.lighting) && !levelName.equals(pie.currentLevelName)) {
-
-			// Finalize the light map.
-			pie.loadingText = "Finalizing Lightmap";
-
-			// Blur the light map.
-			fastblur(pie.lightMap, 5);
-
+		// If lighting is turned on.
+		pie.loadingText = "Finalizing Lightmap";
+		if (pie.lighting) {
+			
+			// Blur the light map, if this is a new level.
+			if (!levelName.equals(pie.currentLevelName)) {
+				fastblur(pie.lightMap, 5);
+			}
+			
 			// Burn lighting into all decals.
 			for (Decal decal : pie.decals) {
 				decal.light();
 			}
 		}
 
-		// Reset levelBuffer for current level.
-		generateLevelBuffer();
+		// Reset levelBuffer for current level, if this is a new level.
+		if (!levelName.equals(pie.currentLevelName)) {
+			generateLevelBuffer();
+		}
 		
 		// Buffer decals that are semi-transparent with the levelBuffer.
 		for (Decal decal : pie.decals) {
@@ -377,7 +377,7 @@ public class levelLoader extends Thread {
 		System.gc();
 
 		// Set loading flag to false (remove loading screen).
-		pie.levelLoading = false;;
+		pie.levelLoading = false;
 		pie.loadLevelTarget = "";
 	}
 	
