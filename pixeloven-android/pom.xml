@@ -24,7 +24,7 @@
   		<artifactId>core</artifactId>
   		<version>3.0.1</version>
   		<scope>system</scope>
-  		<systemPath>${project.basedir}/lib/android-core.jar</systemPath>
+  		<systemPath>${project.basedir}/lib/androidcore.jar</systemPath>
   	</dependency>
   </dependencies>
 </project>

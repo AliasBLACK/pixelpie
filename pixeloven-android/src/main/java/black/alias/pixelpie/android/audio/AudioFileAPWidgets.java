@@ -1,6 +1,5 @@
 package black.alias.pixelpie.android.audio;
 
-import black.alias.pixelpie.android.ui.sound.APMediaPlayer;
 import black.alias.pixelpie.audio.AudioFile;
 import android.app.Activity;
 

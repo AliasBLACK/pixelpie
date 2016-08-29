@@ -10,17 +10,12 @@ import processing.opengl.PJOGL;
 import black.alias.pixelpie.level.*;
 import black.alias.pixelpie.loader.*;
 import black.alias.pixelpie.sprite.*;
-import black.alias.pixelpie.ui.render.*;
-import black.alias.pixelpie.ui.uiHelper;
-import black.alias.pixelpie.ui.input.*;
 import black.alias.pixelpie.audio.*;
 import black.alias.pixelpie.audio.levelaudio.*;
 import black.alias.pixelpie.controls.Controls;
 import black.alias.pixelpie.effect.Effect;
 import black.alias.pixelpie.file.FileManager;
 import black.alias.pixelpie.graphics.*;
-import de.lessvoid.nifty.Nifty;
-import de.lessvoid.nifty.spi.time.impl.FastTimeProvider;
 
 /**
  * The main PixelPie class.
@@ -70,10 +65,6 @@ public class PixelPie {
 	public PGraphics lightMap;
 	public String currentLevelName;
 	
-	// Nifty GUI.
-	public final Nifty nifty;
-	public final uiHelper ui;
-	
 	/**
 	 * Initialize PixelPie.
 	 * @param app
@@ -119,10 +110,12 @@ public class PixelPie {
 		this.frameRate = fps;
 		app.frameRate(fps);
 		
-		// Set renderer-specific settings.
+		// Set OpenGL specific settings to retain pixel art instead of smoothing it.
 		if (app.g instanceof PGraphicsOpenGL) {
-			((PGraphicsOpenGL)app.g).textureSampling(3);
-			((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
+			if (oven.getPlatform().equals("Java")) {
+				((PGraphicsOpenGL)app.g).textureSampling(3);			
+				((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
+			}
 		}
 		
 		// Essential Parameters.
@@ -153,17 +146,6 @@ public class PixelPie {
 		
 		// Grab reference to FileManager.
 		this.FileSystem = oven.getManager();
-		
-		// Initiate Nifty.
-		nifty = new Nifty(
-				new RenderDeviceProcessing(app, pixelSize),
-				oven.getNiftyAudio(),
-				new InputSystemProcessing(app, pixelSize),
-				new FastTimeProvider()
-				);
-		
-		// Initiate UI Helper.
-		ui = new uiHelper(nifty);
 		
 		// Initiate logger.
 		this.log = new Logger(app, this);
@@ -237,10 +219,6 @@ public class PixelPie {
 			}
 		}
 		depthBuffer.clear();
-		
-		// Update Nifty GUI.
-		nifty.update();
-		nifty.render(false);
 		
 		// Show FPS
 		if (displayFPS) {

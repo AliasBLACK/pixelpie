@@ -16,7 +16,7 @@
  * along with APWidgets. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package black.alias.pixelpie.android.ui.sound;
+package black.alias.pixelpie.android.audio;
 
 import java.io.IOException;
 import java.util.Vector;
