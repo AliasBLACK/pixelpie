@@ -3,12 +3,11 @@
 	<groupId>black.alias</groupId>
 	<artifactId>pixelpie-main</artifactId>
 	<packaging>pom</packaging>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0</version>
 	<name>PixelPie</name>
-	<description>2D Pixel Art Game Framework for Processing 3</description>
+	<description>2D Game Framework for Processing 3</description>
 	<modules>
 		<module>pixelpie</module>
-		<module>pixeloven-android</module>
-		<module>pixeloven-java</module>
+		<module>ptmx</module>
 	</modules>
 </project>

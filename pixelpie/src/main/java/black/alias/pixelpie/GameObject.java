@@ -332,26 +332,19 @@ public class GameObject {
 			lightTemp.updatePixels();
 
 			// Draw the lighted sprite onto screen.
-			pie.app.copy(lightTemp, startX, startY, drawWidth, drawHeight,
-					(startX > 0) ? 0 : (x - pie.displayX) * pie.pixelSize,
-					(startY > 0) ? 0 : (y - pie.displayY) * pie.pixelSize,
-					drawWidth * pie.pixelSize,
-					drawHeight * pie.pixelSize
-					);
+			PixelPie.screenBuffer.image(
+				lightTemp.get(startX, startY, drawWidth, drawHeight),
+				(startX > 0) ? 0 : (x - pie.displayX),
+				(startY > 0) ? 0 : (y - pie.displayY)
+			);
 
 		// Else, if no lighting.
 		} else {
-			pie.app.copy(
-					spr.sprite,
-					startX + (currentFrame * spr.pixWidth),
-					startY,
-					drawWidth,
-					drawHeight,
-					(startX > 0) ? 0 : (x - pie.displayX) * pie.pixelSize,
-					(startY > 0) ? 0 : (y - pie.displayY) * pie.pixelSize,
-					drawWidth * pie.pixelSize,
-					drawHeight * pie.pixelSize
-					);
+			PixelPie.screenBuffer.image(
+				spr.sprite.get(startX + (currentFrame * spr.pixWidth), startY, drawWidth, drawHeight),
+				(startX > 0) ? 0 : (x - pie.displayX),
+				(startY > 0) ? 0 : (y - pie.displayY)
+			);
 		}
 	}
 }

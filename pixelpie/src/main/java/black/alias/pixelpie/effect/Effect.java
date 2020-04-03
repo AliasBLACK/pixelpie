@@ -78,17 +78,11 @@ public class Effect {
 		int drawWidth = objWidth - PApplet.max(0, x - xOffset + objWidth - pie.displayX - pie.matrixWidth) - startX;
 		int drawHeight = objHeight - PApplet.max(0, y - yOffset + objHeight - pie.displayY - pie.matrixHeight) - startY;
 		
-		pie.app.copy(
-				pie.spr.get(sprite).sprite,
-				startX + (currentFrame * objWidth),
-				startY,
-				drawWidth,
-				drawHeight,
-				(startX > 0) ? 0 : (x - xOffset - pie.displayX) * pie.pixelSize,
-				(startY > 0) ? 0 : (y - yOffset - pie.displayY) * pie.pixelSize,
-				drawWidth * pie.pixelSize,
-				drawHeight * pie.pixelSize
-				);
+		PixelPie.screenBuffer.image(
+			pie.spr.get(sprite).sprite.get(startX + (currentFrame * objWidth), startY, drawWidth, drawHeight),
+			(startX > 0) ? 0 : (x - xOffset - pie.displayX),
+			(startY > 0) ? 0 : (y - yOffset - pie.displayY)
+		);
 	}
 
 	/**

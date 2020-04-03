@@ -1,0 +1,3 @@
+[submodule "ptmx"]
+	path = ptmx
+	url = https://github.com/linux-man/ptmx.git

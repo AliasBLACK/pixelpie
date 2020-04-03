@@ -10,6 +10,7 @@ import processing.data.StringDict;
 import processing.data.XML;
 import black.alias.pixelpie.PixelPie;
 import black.alias.pixelpie.GameObject;
+import black.alias.pixelpie.audio.levelaudio.GlobalAudio;
 import black.alias.pixelpie.audio.levelaudio.LevelAudio;
 import black.alias.pixelpie.level.Level;
 import black.alias.pixelpie.level.TileSet;
@@ -66,6 +67,10 @@ public class levelLoader extends Thread {
 				pie.lighting = true;
 			} else {
 				pie.lighting = false;
+			}
+			
+			if (level.properties.hasKey("bgm") == true ) {
+				pie.sounds.add(new GlobalAudio(level.properties.get("bgm"), true, pie));
 			}
 		}
 
@@ -379,6 +384,13 @@ public class levelLoader extends Thread {
 		// Set loading flag to false (remove loading screen).
 		pie.levelLoading = false;
 		pie.loadLevelTarget = "";
+		
+		// Start any BGMs if any.
+		for (LevelAudio snd : pie.sounds) {
+			if (snd.getClass() == GlobalAudio.class) {
+				snd.play();
+			}
+		}
 	}
 	
 	/**

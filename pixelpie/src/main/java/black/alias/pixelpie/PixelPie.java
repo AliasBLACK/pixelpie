@@ -2,7 +2,6 @@ package black.alias.pixelpie;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-
 import processing.core.*;
 import processing.data.StringList;
 import processing.opengl.PGraphicsOpenGL;
@@ -14,7 +13,6 @@ import black.alias.pixelpie.audio.*;
 import black.alias.pixelpie.audio.levelaudio.*;
 import black.alias.pixelpie.controls.Controls;
 import black.alias.pixelpie.effect.Effect;
-import black.alias.pixelpie.file.FileManager;
 import black.alias.pixelpie.graphics.*;
 
 /**
@@ -27,7 +25,6 @@ public class PixelPie {
 	public final PApplet app;
 	public final AudioDevice SoundDevice;
 	public final Logger log;
-	public final FileManager FileSystem;
 	public int displayX, displayY, roomWidth, roomHeight, matrixWidth, matrixHeight,
 		pixelSize, index;
 	public float frameRate, frameProgress;
@@ -65,13 +62,16 @@ public class PixelPie {
 	public PGraphics lightMap;
 	public String currentLevelName;
 	
+	// Everything is drawn to this before being transfered to the screen.
+	public static PGraphics screenBuffer;
+	
 	/**
 	 * Initialize PixelPie.
 	 * @param app
 	 * @param minim
 	 */
-	public PixelPie(PApplet app, PixelOven oven) {
-		this(app, oven, 2, 60.0f);
+	public PixelPie(PApplet app) {
+		this(app, 2, 60.0f);
 	}
 	
 	/**
@@ -80,8 +80,8 @@ public class PixelPie {
 	 * @param device
 	 * @param fps
 	 */
-	public PixelPie(PApplet app, PixelOven oven, float fps) {
-		this(app, oven, 2, fps);
+	public PixelPie(PApplet app, float fps) {
+		this(app, 2, fps);
 	}
 	
 	/**
@@ -90,8 +90,8 @@ public class PixelPie {
 	 * @param minim
 	 * @param PixelSize
 	 */
-	public PixelPie(PApplet app, PixelOven oven, int PixelSize) {
-		this(app, oven, PixelSize, 60.0f);
+	public PixelPie(PApplet app, int PixelSize) {
+		this(app, PixelSize, 60.0f);
 	}
 	
 	/**
@@ -101,7 +101,7 @@ public class PixelPie {
 	 * @param PixelSize
 	 * @param fps
 	 */
-	public PixelPie(PApplet app, PixelOven oven, int PixelSize, float fps) {
+	public PixelPie(PApplet app, int PixelSize, float fps) {
 		
 		// Keep reference to PApplet.
 		this.app = app;
@@ -109,14 +109,6 @@ public class PixelPie {
 		// Set desired frameRate, and keep record of it in PixelPie for animation purposes.
 		this.frameRate = fps;
 		app.frameRate(fps);
-		
-		// Set OpenGL specific settings to retain pixel art instead of smoothing it.
-		if (app.g instanceof PGraphicsOpenGL) {
-			if (oven.getPlatform().equals("Java")) {
-				((PGraphicsOpenGL)app.g).textureSampling(3);			
-				((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
-			}
-		}
 		
 		// Essential Parameters.
 		app.noStroke();
@@ -137,15 +129,18 @@ public class PixelPie {
 		// Initiate pixelMatrix.
 		matrixWidth = app.width / pixelSize;
 		matrixHeight = app.height / pixelSize;
+		
+		// Initiate screenBuffer.
+		screenBuffer = app.createGraphics(matrixWidth, matrixHeight);
 
 		// Initiate depthBuffers.
 		depthBuffer = new StringList();
 
 		// Grab reference to AudioDevice.
-		this.SoundDevice = oven.getAudio();
+		this.SoundDevice = new AudioDevice(app);
 		
 		// Grab reference to FileManager.
-		this.FileSystem = oven.getManager();
+		//this.FileSystem = oven.getManager();
 		
 		// Initiate logger.
 		this.log = new Logger(app, this);
@@ -176,6 +171,10 @@ public class PixelPie {
 
 		// Erase previous draw.
 		app.background(0);
+		
+		// Prepare screenBuffer for drawing.
+		screenBuffer.beginDraw();
+		screenBuffer.background(0);
 
 		// If assets are loaded, run loop functions.
 		if (loaded && !levelLoading) {
@@ -219,6 +218,10 @@ public class PixelPie {
 			}
 		}
 		depthBuffer.clear();
+		
+		// Finalize screenBuffer and draw to screen.
+		screenBuffer.endDraw();
+		app.image(screenBuffer, 0, 0, app.width, app.height);
 		
 		// Show FPS
 		if (displayFPS) {
@@ -285,34 +288,29 @@ public class PixelPie {
 	 * Update level.
 	 */
 	public void updateLevel() {
+		
+		// If level is loaded.
 		if (currentLevel != null) {
+			
 			// Process background layers.
 			for (int h = 0; h < currentLevel.backgroundLayers; h++) {
-				app.copy(
-						backgroundBuffer[h],
+				PImage background = backgroundBuffer[h].get(
 						Math.round(displayX * currentLevel.bgScroll[h]),
 						Math.round(displayY * currentLevel.bgScroll[h]),
 						matrixWidth,
-						matrixHeight,
-						0,
-						0,
-						app.width,
-						app.height
-						);
+						matrixHeight
+				);
+				screenBuffer.image(background, 0, 0);
 			}
 			
 			// Process foreground layers.
-			app.copy(
-					levelBuffer,
+			PImage foreground = levelBuffer.get(
 					displayX,
 					displayY,
 					matrixWidth,
-					matrixHeight,
-					0,
-					0,
-					app.width,
-					app.height
-					);
+					matrixHeight
+				);
+			screenBuffer.image(foreground, 0, 0);
 		}
 	}
 
@@ -429,6 +427,16 @@ public class PixelPie {
 					}
 				}
 			}
+		}
+	}
+	
+	/**
+	 * Set OpenGL specific settings to retain pixel art instead of smoothing it.
+	 */
+	public void PixelArtMode() {
+		if (app.g instanceof PGraphicsOpenGL) {
+			((PGraphicsOpenGL)app.g).textureSampling(3);			
+			((PJOGL)((PGraphicsOpenGL)app.g).pgl).gl.setSwapInterval(1);
 		}
 	}
 

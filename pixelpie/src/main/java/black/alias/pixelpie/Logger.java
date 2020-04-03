@@ -15,7 +15,8 @@ public class Logger {
 	// Initialize log file.
 	public Logger(PApplet app, PixelPie pie) {
 		this.app = app;
-		this.log = app.createWriter(pie.FileSystem.getDirectory() + "log.txt");		
+		//this.log = app.createWriter(pie.FileSystem.getDirectory() + "log.txt");
+		this.log = app.createWriter("log.txt");
 		prepareExitHandler();
 	}
 	

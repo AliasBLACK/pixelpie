@@ -213,16 +213,10 @@ public class Decal {
 	 * Draw the decal onto the screen.
 	 */
 	public void render() {
-		pie.app.copy(
-				sprite,
-				currentFrame * objWidth,
-				0,
-				objWidth,
-				objHeight,
-				(x - xOffset - pie.displayX) * pie.pixelSize,
-				(y - yOffset - pie.displayY) * pie.pixelSize,
-				objWidth * pie.pixelSize,
-				objHeight * pie.pixelSize
-				);
+		PixelPie.screenBuffer.image(
+			sprite.get(currentFrame * objWidth,	0, objWidth, objHeight),
+			(x - xOffset - pie.displayX),
+			(y - yOffset - pie.displayY)
+		);
 	}
 }
